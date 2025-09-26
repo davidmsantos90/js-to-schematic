@@ -1,15 +1,16 @@
 {
-  "name": "js-to-assembly",
+  "name": "js-to-schematic",
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "david.m.santos90@gmail.com",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "esprima": "^4.0.1"
+    "esprima": "^4.0.1",
+    "prismarine-nbt": "^2.7.0"
   }
 }
