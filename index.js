@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import compile from "./src/compiler.js";
-import assemble from "./src/assembler.js";
+import compile from "./src/compile/compiler.js";
+import assemble from "./src/assemble/index.js";
 import buildSchematicFile from "./src/schematic.js";
 
 // Usage: node index.js <source.(js|as)>

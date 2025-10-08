@@ -79,7 +79,7 @@ const ISA = {
   wordSize: INSTRUCTION_WORD_SIZE,
   addressSize: ADDRESS_SIZE,
   memorySize: MEMORY_SIZE,
-  fillNulls: true,
+
   registers: {
     [ZERO_REGISTER]: { special: "zero", description: "Constant value 0, value is discarded" },
     r1: { description: "General purpose" },

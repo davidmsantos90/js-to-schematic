@@ -1,22 +1,28 @@
 function fibonacci() {
-  let n = 10;
+  let prev = 0;
+  let result = 1;
+
+  let n = 5;
   let i = 2;
 
   let temp = 0;
 
-  let prev = 0;
-  let curr = 1;
-
   while (i < n - 1) {
-    temp = prev + curr;
+  // while (true) {
+    temp = prev + result;
     
-    prev = curr;
-    curr = temp;
+    prev = result;
+    result = temp;
+
+    // if (i >= n - 1) {
+    //   break;
+    // }
 
     i = i + 1;
   }
 
-  return curr;
+  return result;
 }
 
-let result = fibonacci();
+// let result = fibonacci();
+// console.log(result);
