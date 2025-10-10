@@ -1,87 +1,76 @@
-export const ZERO_REGISTER = "r0"; // register reserved for zero value
-export const RETURN_REGISTER = "r15"; // register reserved for return
-
-const INSTRUCTION_WORD_SIZE = 16;
-const REGISTER_SIZE = 4;
-const IMMEDIATE_SIZE = 8;
-const ADDRESS_SIZE = 10;
-const MEMORY_SIZE = 256;
+import ISADefinition, {
+  ADDRESS_SIZE,
+  asBinaryString,
+  Binary2,
+  BinaryString,
+  IMMEDIATE_SIZE,
+  Instruction,
+  INSTRUCTION_WORD_SIZE,
+  MEMORY_SIZE,
+  REGISTER_SIZE,
+  RegisterName,
+  RETURN_REGISTER,
+  ZERO_REGISTER,
+} from "./types/ISA";
 
 const CONDITIONS = {
   /** Equal (Z==1) */
-  get eq() { return this._eq; },
-  get "=="() { return this._eq; },
-  _eq: "00",
+  eq: "00",
+  "==": "00",
 
   /** Not Equal (Z==0) */
-  get ne() { return this._ne; },
-  get "!="() { return this._ne; },
-  _ne: "01",
+  ne: "01",
+  "!=": "01",
 
   /** Greater Than or Equal (C==1) */
-  get ge() { return this._ge; },
-  get ">="() { return this._ge; },
-  _ge: "10",
+  ge: "10",
+  ">=": "10",
 
   /** Less Than (C==0) */
-  get lt() { return this._lt; },
-  get "<"() { return this._lt; },
-  _lt: "11"
+  lt: "11",
+  "<": "11",
+} as Record<string, Binary2>;
+
+const conditionToBinary = (cond: string): Binary2 => {
+  const { [cond]: binary } = CONDITIONS;
+  if (binary == null) throw new Error(`Invalid condition: ${cond}`);
+
+  return binary;
 };
 
-const toBinary = (value, bits, signed = false) => {
+const toBinary = (value: string, bits: number, signed: boolean = false): BinaryString => {
   let num = parseInt(value, 10);
-  if (isNaN(num)) return "0".repeat(bits);
+  if (isNaN(num)) return asBinaryString("0".repeat(bits));
 
   if (signed && num < 0) {
     num = (1 << bits) + num;
   }
 
-  return num.toString(2).padStart(bits, "0").slice(-bits);
+  const binary: string = num.toString(2).padStart(bits, "0").slice(-bits);
+  return asBinaryString(binary);
 };
 
-const registerToBinary = (reg) => {
-  const regNum = parseInt(reg.replace("r", ""), 10);
-  if (isNaN(regNum) || regNum < 0 || regNum > 15) {
-    throw new Error(`Invalid register: ${reg}`);
+const registerToBinary = (register: RegisterName) =>
+  toBinary(register.replace("r", ""), REGISTER_SIZE);
+
+const binaryToSignedDecimal = (value: BinaryString): number => {
+  const decimal = parseInt(value, 2);
+  if (value[0] !== "1") {
+    return decimal;
   }
 
-  return toBinary(regNum, REGISTER_SIZE);
+  const bits = value.length;
+  return decimal - (1 << bits);
 };
 
-const conditionToBinary = (cond) => {
-  const { [cond]: binary } = CONDITIONS;
-  if (!binary) {
-    throw new Error(`Invalid condition: ${cond}`);
-  }
-
-  return binary;
-};
-
-
-// Recreated helper outside ISA: convert two's complement binary string to signed decimal
-const binaryToSignedDecimal = (bin) => {
-  if (typeof bin !== "string" || !/^[01]+$/.test(bin)) throw new Error("Invalid binary string");
-  
-  const bits = bin.length;
-  if (bits > 30) { // use BigInt for wider values safely
-    let val = BigInt("0b" + bin);
-    if (bin[0] === '1') val -= (BigInt(1) << BigInt(bits));
-    return Number(val);
-  }
-  
-  let value = parseInt(bin, 2);
-  if (bin[0] === '1') value -= (1 << bits);
-  return value;
-}
-
-const ISA = {
+const ISA: ISADefinition = {
   wordSize: INSTRUCTION_WORD_SIZE,
   addressSize: ADDRESS_SIZE,
   memorySize: MEMORY_SIZE,
 
   registers: {
     [ZERO_REGISTER]: { special: "zero", description: "Constant value 0, value is discarded" },
+
     r1: { description: "General purpose" },
     r2: { description: "General purpose" },
     r3: { description: "General purpose" },
@@ -96,16 +85,8 @@ const ISA = {
     r12: { description: "General purpose" },
     r13: { description: "General purpose" },
     r14: { description: "General purpose" },
-    [RETURN_REGISTER]: { special: "return", description: "Return register" }
-  },
 
-  getInstruction(mnemonic) {
-    const instruction = this.instructions[mnemonic] ?? this.pseudos[mnemonic];
-    if (!instruction) {
-      throw new Error(`Unknown instruction: ${mnemonic}`);
-    }
-
-    return instruction;
+    [RETURN_REGISTER]: { special: "return", description: "Return register" },
   },
 
   instructions: {
@@ -117,8 +98,8 @@ const ISA = {
         return `NOOP`;
       },
       toMachine() {
-        return "0".repeat(INSTRUCTION_WORD_SIZE);
-      }
+        return asBinaryString("0".repeat(INSTRUCTION_WORD_SIZE));
+      },
     },
     HALT: {
       opcode: "0001",
@@ -128,8 +109,8 @@ const ISA = {
         return `HALT`;
       },
       toMachine() {
-        return `0001${"0".repeat(INSTRUCTION_WORD_SIZE - 4)}`;
-      }
+        return asBinaryString(`0001${"0".repeat(INSTRUCTION_WORD_SIZE - 4)}`);
+      },
     },
 
     // Arithmetic and logic
@@ -141,8 +122,10 @@ const ISA = {
         return `ADD ${readA} ${readB} ${write}`;
       },
       toMachine(readA, readB, write) {
-        return `0010${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`;
-      }
+        return asBinaryString(
+          `0010${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`,
+        );
+      },
     },
     SUB: {
       opcode: "0011",
@@ -152,8 +135,10 @@ const ISA = {
         return `SUB ${readA} ${readB} ${write}`;
       },
       toMachine(readA, readB, write) {
-        return `0011${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`;
-      }
+        return asBinaryString(
+          `0011${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`,
+        );
+      },
     },
     NOR: {
       opcode: "0100",
@@ -163,8 +148,10 @@ const ISA = {
         return `NOR ${readA} ${readB} ${write}`;
       },
       toMachine(readA, readB, write) {
-        return `0100${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`;
-      }
+        return asBinaryString(
+          `0100${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`,
+        );
+      },
     },
     AND: {
       opcode: "0101",
@@ -174,8 +161,10 @@ const ISA = {
         return `AND ${readA} ${readB} ${write}`;
       },
       toMachine(readA, readB, write) {
-        return `0101${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`;
-      }
+        return asBinaryString(
+          `0101${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`,
+        );
+      },
     },
     XOR: {
       opcode: "0110",
@@ -185,8 +174,10 @@ const ISA = {
         return `XOR ${readA} ${readB} ${write}`;
       },
       toMachine(readA, readB, write) {
-        return `0110${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`;
-      }
+        return asBinaryString(
+          `0110${registerToBinary(readA)}${registerToBinary(readB)}${registerToBinary(write)}`,
+        );
+      },
     },
     RSHIFT: {
       opcode: "0111",
@@ -196,8 +187,8 @@ const ISA = {
         return `RSHIFT ${readA} ${write}`;
       },
       toMachine(readA, write) {
-        return `0111${registerToBinary(readA)}0000${registerToBinary(write)}`;
-      }
+        return asBinaryString(`0111${registerToBinary(readA)}0000${registerToBinary(write)}`);
+      },
     },
 
     LDI: {
@@ -208,8 +199,10 @@ const ISA = {
         return `LDI ${destination} ${immediate}`;
       },
       toMachine(destination, immediate) {
-        return `1000${registerToBinary(destination)}${toBinary(immediate, IMMEDIATE_SIZE)}`;
-      }
+        return asBinaryString(
+          `1000${registerToBinary(destination)}${toBinary(immediate, IMMEDIATE_SIZE)}`,
+        );
+      },
     },
     ADDI: {
       opcode: "1001",
@@ -219,8 +212,10 @@ const ISA = {
         return `ADDI ${reg} ${immediate}`;
       },
       toMachine(reg, immediate) {
-        return `1001${registerToBinary(reg)}${toBinary(immediate, IMMEDIATE_SIZE, true)}`;
-      }
+        return asBinaryString(
+          `1001${registerToBinary(reg)}${toBinary(immediate, IMMEDIATE_SIZE, true)}`,
+        );
+      },
     },
 
     JUMP: {
@@ -231,8 +226,8 @@ const ISA = {
         return `JUMP ${addr}`;
       },
       toMachine(addr) {
-        return `1010${toBinary(addr, ADDRESS_SIZE + 2)}`;
-      }
+        return asBinaryString(`1010${toBinary(addr, ADDRESS_SIZE + 2)}`);
+      },
     },
     BRANCH: {
       opcode: "1011",
@@ -242,8 +237,8 @@ const ISA = {
         return `BRANCH ${cond} ${addr}`;
       },
       toMachine(cond, addr) {
-        return `1011${conditionToBinary(cond)}${toBinary(addr, ADDRESS_SIZE)}`;
-      }
+        return asBinaryString(`1011${conditionToBinary(cond)}${toBinary(addr, ADDRESS_SIZE)}`);
+      },
     },
     CALL: {
       opcode: "1100",
@@ -253,8 +248,8 @@ const ISA = {
         return `CALL ${addr}`;
       },
       toMachine(addr) {
-        return `1100${toBinary(addr, ADDRESS_SIZE + 2)}`;
-      }
+        return asBinaryString(`1100${toBinary(addr, ADDRESS_SIZE + 2)}`);
+      },
     },
     RET: {
       opcode: "1101",
@@ -264,8 +259,8 @@ const ISA = {
         return `RET`;
       },
       toMachine() {
-        return `1101${"0".repeat(INSTRUCTION_WORD_SIZE - 4)}`;
-      }
+        return asBinaryString(`1101${"0".repeat(INSTRUCTION_WORD_SIZE - 4)}`);
+      },
     },
 
     LOAD: {
@@ -276,8 +271,10 @@ const ISA = {
         return `LOAD ${regA} ${regB} ${offset}`;
       },
       toMachine(regA, regB, offset) {
-        return `1110${registerToBinary(regA)}${registerToBinary(regB)}${toBinary(offset, 4, true)}`;
-      }
+        return asBinaryString(
+          `1110${registerToBinary(regA)}${registerToBinary(regB)}${toBinary(offset, 4, true)}`,
+        );
+      },
     },
     STORE: {
       opcode: "0011",
@@ -286,9 +283,11 @@ const ISA = {
       toAssembly(regA, regB, offset) {
         return `STORE ${regA} ${regB} ${offset}`;
       },
-      toMachine(regA, regB, offset = 0) {
-        return `0011${registerToBinary(regA)}${registerToBinary(regB)}${toBinary(offset, 4, true)}`;
-      }
+      toMachine(regA, regB, offset = "0") {
+        return asBinaryString(
+          `0011${registerToBinary(regA)}${registerToBinary(regB)}${toBinary(offset, 4, true)}`,
+        );
+      },
     },
   },
 
@@ -300,7 +299,7 @@ const ISA = {
       },
       toMachine(source, destination) {
         return ISA.instructions.ADD.toMachine(source, ZERO_REGISTER, destination);
-      }
+      },
     },
     CLEAR: {
       description: "Clear register (alias for LDI reg 0)",
@@ -308,8 +307,8 @@ const ISA = {
         return `CLEAR ${reg}`;
       },
       toMachine(reg) {
-        return ISA.instructions.LDI.toMachine(reg, 0);
-      }
+        return ISA.instructions.LDI.toMachine(reg, "0");
+      },
     },
     CMP: {
       description: "Compare two registers and set flags (alias for SUB regA regB r0)",
@@ -318,7 +317,7 @@ const ISA = {
       },
       toMachine(regA, regB) {
         return ISA.instructions.SUB.toMachine(regA, regB, ZERO_REGISTER);
-      }
+      },
     },
 
     // CMPI: {
@@ -346,8 +345,8 @@ const ISA = {
         return `SUBI ${reg} ${immediate}`;
       },
       toMachine(reg, immediate) {
-        return ISA.instructions.ADDI.toMachine(reg, -immediate);
-      }
+        return ISA.instructions.ADDI.toMachine(reg, `-${immediate}`);
+      },
     },
     INC: {
       description: "Increment register by 1 (alias for ADDI reg, 1)",
@@ -355,8 +354,8 @@ const ISA = {
         return `INC ${reg}`;
       },
       toMachine(reg) {
-        return ISA.instructions.ADDI.toMachine(reg, 1);
-      }
+        return ISA.instructions.ADDI.toMachine(reg, "1");
+      },
     },
     DEC: {
       description: "Decrement register by 1 (alias for ADDI reg, -1)",
@@ -364,8 +363,8 @@ const ISA = {
         return `DEC ${reg}`;
       },
       toMachine(reg) {
-        return ISA.instructions.ADDI.toMachine(reg, -1);
-      }
+        return ISA.instructions.ADDI.toMachine(reg, "-1");
+      },
     },
     // Saltos condicionais legíveis
     BEQ: {
@@ -375,7 +374,7 @@ const ISA = {
       },
       toMachine(addr) {
         return ISA.instructions.BRANCH.toMachine("==", addr);
-      }
+      },
     },
     BNE: {
       description: "Branch if not equal (alias for BRANCH != addr)",
@@ -384,7 +383,7 @@ const ISA = {
       },
       toMachine(addr) {
         return ISA.instructions.BRANCH.toMachine("!=", addr);
-      }
+      },
     },
     BGE: {
       description: "Branch if greater or equal (alias for BRANCH >= addr)",
@@ -393,7 +392,7 @@ const ISA = {
       },
       toMachine(addr) {
         return ISA.instructions.BRANCH.toMachine(">=", addr);
-      }
+      },
     },
     BLT: {
       description: "Branch if less than (alias for BRANCH < addr)",
@@ -402,9 +401,18 @@ const ISA = {
       },
       toMachine(addr) {
         return ISA.instructions.BRANCH.toMachine("<", addr);
-      }
-    }
+      },
+    },
+  },
+};
+
+export const getInstruction = (mnemonic: string): Instruction => {
+  const instruction = ISA.instructions[mnemonic] ?? ISA.pseudos[mnemonic];
+  if (!instruction) {
+    throw new Error(`Unknown instruction: ${mnemonic}`);
   }
+
+  return instruction;
 };
 
 export default ISA;

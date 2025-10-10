@@ -2,8 +2,15 @@
   "name": "js-to-schematic",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "tsx index.ts",
+    "lint": "eslint . --ext .js,.ts",
+    "lint:fix": "eslint . --ext .js,.ts --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "david.m.santos90@gmail.com",
@@ -12,5 +19,16 @@
   "dependencies": {
     "esprima": "^4.0.1",
     "prismarine-nbt": "^2.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.0",
+    "@types/esprima": "^4.0.3",
+    "prettier": "^3.1.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "tsx": "^4.7.0",
+    "eslint-config-prettier": "^9.0.0"
   }
 }
