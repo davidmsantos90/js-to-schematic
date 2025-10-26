@@ -1,6 +1,6 @@
 import fs from "fs";
 import esprima, { Program } from "esprima";
-import compile from "./functionalCompiler.js";
+import compile from "./compiler.js";
 
 const ASSEMBLY_EXT = "as";
 
@@ -11,12 +11,12 @@ const save = (code: string[], name: string) => {
 const debugLog = (code: string[]) => {
   const maxIndexSize = `${code.length}`.length;
 
-  console.log("\n\n==> Assembly:\n");
+  console.log("==> Assembly:\n");
   code.forEach((line, index) => {
-    const indexSize = `${index + 1}`.length;
+    const indexSize = `${index}`.length;
     const padding = " ".repeat(maxIndexSize - indexSize);
 
-    console.log(`${padding}${index + 1}.  ${line}`);
+    console.log(`${padding}${index}.  ${line}`);
   });
 };
 

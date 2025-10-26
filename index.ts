@@ -29,9 +29,9 @@ console.log("Starting compilation/assembly reading...");
 const assembly = ext === ".as" ? sourceCode.split(/\r?\n/) : compile(sourceCode, name);
 
 // 2. Assemble to machine code
-console.log("Assembling to machine code...");
+console.log("\n\nAssembling to machine code...");
 const machine = assemble(assembly, name);
 
 // 3. Build schematic file
-console.log("Building schematic file...");
-buildSchematicFile(machine, name, { offsetStrategy: "opposite-corner" });
+console.log("\n\nBuilding schematic file...");
+buildSchematicFile(machine, name);

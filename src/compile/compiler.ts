@@ -8,6 +8,7 @@ import { createCompilerContext } from "./CompilerContext.js";
 import { createExpressionCompiler } from "./modules/expressionCompiler.js";
 import { createLoopCompiler, type CompileStatementFn } from "./modules/loopCompiler.js";
 import { createStatementCompiler } from "./modules/statementCompiler.js";
+import registers from "./registers.js";
 
 
 export default function compile(program: Program): string[] {
@@ -74,7 +75,6 @@ export default function compile(program: Program): string[] {
     compileUpdateExpression: loopCompiler.compileUpdateExpression,
   });
 
-  // Compile the program
   for (const statement of program.body) {
     compileStatement(statement as Statement);
   }

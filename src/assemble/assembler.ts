@@ -9,8 +9,15 @@ export const cleanup = (program: string[]) =>
     })
     .filter((line) => line.length > 0); // Remove empty lines
 
-export const replaceLabels = (program: string[]): { mnemonic: string; operands: string[] }[] => {
+type TranslatedInstruction = {
+  mnemonic: string;
+  operands: string[];
+  originalAssembly: string;
+};
+
+export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
   const instructions: string[] = [];
+  const originalLines: string[] = [];
   const labels: Record<string, string> = {};
 
   let address = 0;
@@ -19,11 +26,17 @@ export const replaceLabels = (program: string[]): { mnemonic: string; operands: 
       labels[line] = `${address}`;
     } else {
       instructions.push(line);
+      // Find the original line from the program (before cleanup)
+      const originalLine = program.find(progLine => {
+        const [code] = progLine.split(";");
+        return code.trim() === line;
+      }) || line;
+      originalLines.push(originalLine.trim());
       address++;
     }
   }
 
-  return instructions.map((line) => {
+  return instructions.map((line, index) => {
     const [mnemonic, ...opsRaw] = line.split(" ");
     const operands = opsRaw.map((operand) => {
       const { [operand]: address } = labels;
@@ -31,19 +44,35 @@ export const replaceLabels = (program: string[]): { mnemonic: string; operands: 
       return address != null ? address : operand;
     });
 
-    return { mnemonic, operands };
+    // Create enhanced assembly comment with resolved label addresses
+    let enhancedAssembly = originalLines[index];
+    
+    // Replace labels with "label (address)" format in the comment
+    opsRaw.forEach((operand, opIndex) => {
+      if (labels[operand] != null) {
+        const labelAddress = labels[operand];
+        enhancedAssembly = enhancedAssembly.replace(operand, `${operand} (${labelAddress})`);
+      }
+    });
+
+    return { 
+      mnemonic, 
+      operands, 
+      originalAssembly: enhancedAssembly 
+    };
   });
 };
 
 export const assembleInstruction = ({
   mnemonic,
   operands,
-}: {
-  mnemonic: string;
-  operands: string[];
-}) => {
+  originalAssembly,
+}: TranslatedInstruction) => {
   const instruction = getInstruction(mnemonic);
   if (!instruction) throw new Error(`Unknown instruction: ${mnemonic}`);
 
-  return instruction.toMachine(...operands);
+  return {
+    machineCode: instruction.toMachine(...operands),
+    assembly: originalAssembly
+  };
 };

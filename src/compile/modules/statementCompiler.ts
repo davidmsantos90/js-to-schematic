@@ -10,7 +10,7 @@ import type {
   UpdateExpression,
   VariableDeclaration,
 } from "estree";
-import { RETURN_REGISTER } from "../../types/ISA.js";
+import { RETURN_REGISTER, type RegisterName } from "../../types/ISA.js";
 import { assertIdentifier } from "../../types/assembly.js";
 import registers from "../registers.js";
 
@@ -46,13 +46,18 @@ export const createStatementCompiler: StatementCompiler = (
     compileUpdateExpression: (node: UpdateExpression) => void;
   }
 ) => {
+  const compileCallExpression = (callExpr: CallExpression): void => {
+    assertIdentifier(callExpr.callee);
+    const fnName = callExpr.callee.name;
+
+    const { startLabel } = context.newLabel(fnName);
+    context.emitInstruction("CALL", [startLabel], callExpr);
+  };
+
   const compileAssignmentExpression = (expression: Expression, name: string): void => {
     switch (expression.type) {
       case "CallExpression": {
-        assertIdentifier(expression.callee);
-
-        const { startLabel } = context.newLabel(expression.callee.name);
-        context.emitInstruction("CALL", [startLabel], expression);
+        compileCallExpression(expression);
 
         // Move return value to a dedicated register for the variable
         const destinationReg = registers.set(name);
@@ -93,9 +98,7 @@ export const createStatementCompiler: StatementCompiler = (
       }
 
       case "CallExpression": {
-        assertIdentifier(node.expression.callee);
-        const fnName = node.expression.callee.name;
-        context.emitInstruction("CALL", [context.newLabel(fnName).startLabel], node.expression);
+        compileCallExpression(node.expression);
         break;
       }
 
@@ -131,7 +134,10 @@ export const createStatementCompiler: StatementCompiler = (
   };
 
   const compileFunctionDeclaration = (node: FunctionDeclaration, compileStatement: CompileStatementFn): void => {
-    const { startLabel, endLabel } = context.newLabel(node.id!.name);
+    const fnName = node.id!.name;
+    const { startLabel, endLabel } = context.newLabel(fnName);
+
+    context.emitInstruction("JUMP", [endLabel]); // don't execute function body on declaration
 
     context.emitLabel(startLabel);
     compileStatement(node.body);
