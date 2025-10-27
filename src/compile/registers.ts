@@ -11,15 +11,6 @@ const registers = new Map<GenericRegisterName, boolean>([
 ]);
 
 export default {
-  // Return register value for function return (r15)
-  _return: null,
-  get return() {
-    return this._return;
-  },
-  set return(varName) {
-    this._return = varName;
-  },
-
   get(key: string | undefined): RegisterName {
     if (key == null || !this.has(key)) {
       return this.next();

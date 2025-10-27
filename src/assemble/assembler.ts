@@ -19,9 +19,21 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
   const instructions: string[] = [];
   const originalLines: string[] = [];
   const labels: Record<string, string> = {};
+  const constants: Record<string, string> = {};
 
+  // First pass: collect constants and labels
   let address = 0;
   for (const line of cleanup(program)) {
+    // Handle define directive
+    if (line.startsWith("define ")) {
+      const parts = line.substring(7).trim().split(/\s+/);
+      if (parts.length === 2) {
+        const [name, value] = parts;
+        constants[name] = value;
+      }
+      continue; // Don't count defines as instructions
+    }
+    
     if (line.startsWith(".")) {
       labels[line] = `${address}`;
     } else {
@@ -36,15 +48,21 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
     }
   }
 
+  // Second pass: replace constants and labels in operands
   return instructions.map((line, index) => {
     const [mnemonic, ...opsRaw] = line.split(" ");
     const operands = opsRaw.map((operand) => {
+      // First check if it's a constant
+      if (constants[operand] != null) {
+        return constants[operand];
+      }
+      
+      // Then check if it's a label
       const { [operand]: address } = labels;
-
       return address != null ? address : operand;
     });
 
-    // Create enhanced assembly comment with resolved label addresses
+    // Create enhanced assembly comment with resolved label addresses and constants
     let enhancedAssembly = originalLines[index];
     
     // Replace labels with "label (address)" format in the comment
@@ -52,6 +70,9 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
       if (labels[operand] != null) {
         const labelAddress = labels[operand];
         enhancedAssembly = enhancedAssembly.replace(operand, `${operand} (${labelAddress})`);
+      } else if (constants[operand] != null) {
+        const constantValue = constants[operand];
+        enhancedAssembly = enhancedAssembly.replace(operand, `${operand} (${constantValue})`);
       }
     });
 

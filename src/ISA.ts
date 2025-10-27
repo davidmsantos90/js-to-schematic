@@ -9,7 +9,7 @@ import ISADefinition, {
   MEMORY_SIZE,
   REGISTER_SIZE,
   RegisterName,
-  RETURN_REGISTER,
+  STACK_POINTER_REGISTER,
   ZERO_REGISTER,
 } from "./types/ISA";
 
@@ -85,8 +85,7 @@ const ISA: ISADefinition = {
     r12: { description: "General purpose" },
     r13: { description: "General purpose" },
     r14: { description: "General purpose" },
-
-    [RETURN_REGISTER]: { special: "return", description: "Return register" },
+    [STACK_POINTER_REGISTER]: { special: "stack_pointer", description: "Stack pointer" },
   },
 
   instructions: {
@@ -277,7 +276,7 @@ const ISA: ISADefinition = {
       },
     },
     STORE: {
-      opcode: "0011",
+      opcode: "1111",
       description: "Stores register content into memory",
 
       toAssembly(regA, regB, offset) {
@@ -285,7 +284,7 @@ const ISA: ISADefinition = {
       },
       toMachine(regA, regB, offset = "0") {
         return asBinaryString(
-          `0011${registerToBinary(regA)}${registerToBinary(regB)}${toBinary(offset, 4, true)}`,
+          `1111${registerToBinary(regA)}${registerToBinary(regB)}${toBinary(offset, 4, true)}`,
         );
       },
     },

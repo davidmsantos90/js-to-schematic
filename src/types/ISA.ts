@@ -4,11 +4,11 @@ const REGISTERS = Array.from({ length: 16 }, (_, i) => `r${i}`);
 export type RegisterName = (typeof REGISTERS)[number];
 
 export const ZERO_REGISTER = "r0"; // register reserved for zero value
-export const RETURN_REGISTER = "r15"; // register reserved for return
+export const STACK_POINTER_REGISTER = "r15"; // register reserved for stack pointer
 
 export type GenericRegisterName = Exclude<
   RegisterName,
-  typeof ZERO_REGISTER | typeof RETURN_REGISTER
+  typeof ZERO_REGISTER | typeof STACK_POINTER_REGISTER
 >;
 
 const isRegisterName = (name?: RegisterName): name is RegisterName =>
