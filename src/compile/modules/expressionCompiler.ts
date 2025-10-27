@@ -26,6 +26,12 @@ export const createExpressionCompiler: ExpressionCompiler = (context) => {
         return registers.get(node.name);
 
       case "Literal": {
+        // Optimize: use r0 (ZERO_REGISTER) for literal 0
+        // BUT only if we're not assigning to a variable (varName would require a real register)
+        if (node.value === 0 && !varName) {
+          return ZERO_REGISTER;
+        }
+        
         const reg = registers.next();
         context.emitInstruction("LDI", [reg, node.value as string], node, assignPrefix);
         return reg;
@@ -113,11 +119,23 @@ export const createExpressionCompiler: ExpressionCompiler = (context) => {
   };
 
   const compileComparison: CompileComparisonFn = (test, trueLabel, falseLabel) => {
-    const left = compileValue(test.left as Expression);
-    const right = compileValue(test.right);
+    let left = test.left as Expression;
+    let right = test.right;
+    let operator = test.operator;
 
-    context.emitInstruction("CMP", [left, right], test);
-    switch (test.operator) {
+    // Transform > and <= by swapping operands
+    // A > B becomes B < A
+    // A <= B becomes B >= A
+    if (operator === ">" || operator === "<=") {
+      [left, right] = [right, left];
+      operator = operator === ">" ? "<" : ">=";
+    }
+
+    const leftReg = compileValue(left);
+    const rightReg = compileValue(right);
+
+    context.emitInstruction("CMP", [leftReg, rightReg], test);
+    switch (operator) {
       case "===":
       case "==":
         context.emitInstruction("BRANCH", ["==", trueLabel], test);

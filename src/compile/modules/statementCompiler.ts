@@ -10,7 +10,7 @@ import type {
   UpdateExpression,
   VariableDeclaration,
 } from "estree";
-import { STACK_POINTER_REGISTER, type RegisterName } from "../../types/ISA.js";
+import { STACK_POINTER_REGISTER, ZERO_REGISTER, type RegisterName } from "../../types/ISA.js";
 import { assertIdentifier } from "../../types/assembly.js";
 import registers from "../registers.js";
 
@@ -92,6 +92,17 @@ export const createStatementCompiler: StatementCompiler = (
         const destinationReg = registers.set(name);
         context.emitInstruction("MOVE", [srcReg, destinationReg], expression, `${name} = `);
         break;
+      }
+
+      case "Literal": {
+        // Special case: initializing with literal 0
+        // Allocate a real register and copy from r0 instead of LDI
+        if (expression.value === 0) {
+          const destinationReg = registers.set(name);
+          context.emitInstruction("MOVE", [ZERO_REGISTER, destinationReg], expression, `${name} = `);
+          break;
+        }
+        // Fall through to default for other literals
       }
 
       default: {

@@ -1,22 +1,24 @@
-function fibonacci() {
+function fibonacci(n) {
   let prev = 0; // F(0)
-  let result = 1; // F(1)
+  // console.log(`step 0 -> ${prev}`);
+  if (n === 0) return prev;
 
-  let n = 10; // F(n)
-  let i = 2;
+  let fib = 1; // F(1)
+  // console.log(`step 1 -> ${fib}`);
+  // if (n === 1) return fib;
 
   let temp = 0;
 
-  while (n >= i) {
-    temp = prev + result;
-    
-    prev = result;
-    result = temp;
+  for (let i = 2; i <= n; i++) { // from F(2) to F(n)
+    temp = prev + fib;
 
-    i = i + 1;
+    prev = fib;
+    fib = temp;
+
+    // console.log(`step ${i} -> ${fib}`);
   }
 
-  return result;
+  return fib;
 }
 
-let result = fibonacci();
+let result = fibonacci(10);
