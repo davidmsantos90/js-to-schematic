@@ -264,7 +264,7 @@ const ISA: ISADefinition = {
 
     LOAD: {
       opcode: "1110",
-      description: "Loads memory content into a register",
+      description: "Loads memory content of (regA + offset) into regB",
 
       toAssembly(regA, regB, offset) {
         return `LOAD ${regA} ${regB} ${offset}`;
@@ -277,7 +277,7 @@ const ISA: ISADefinition = {
     },
     STORE: {
       opcode: "1111",
-      description: "Stores register content into memory",
+      description: "Stores regB content into memory (regA + offset)",
 
       toAssembly(regA, regB, offset) {
         return `STORE ${regA} ${regB} ${offset}`;

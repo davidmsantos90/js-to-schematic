@@ -56,7 +56,7 @@ export const createStatementCompiler: StatementCompiler = (
       const argReg = compileValue(arg as Expression);
       
       // STORE arg to stack at [SP]
-      context.emitInstruction("STORE", [argReg, STACK_POINTER_REGISTER, "0"], arg as Expression);
+      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, argReg, "0"], arg as Expression);
       // Decrement stack pointer
       context.emitInstruction("SUBI", [STACK_POINTER_REGISTER, "1"]);
     }
@@ -80,7 +80,7 @@ export const createStatementCompiler: StatementCompiler = (
 
         // Load return value from stack at [SP + 1] into variable's register
         const destinationReg = registers.set(name);
-        context.emitInstruction("LOAD", [destinationReg, STACK_POINTER_REGISTER, "1"], expression, `${name} = `);
+        context.emitInstruction("LOAD", [STACK_POINTER_REGISTER, destinationReg, "1"], expression, `${name} = `);
         break;
       }
 
@@ -198,7 +198,7 @@ export const createStatementCompiler: StatementCompiler = (
     if (statement?.argument) {
       const valueReg = compileValue(statement.argument);
       // Push return value onto stack
-      context.emitInstruction("STORE", [valueReg, STACK_POINTER_REGISTER, "0"], statement);
+      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, valueReg, "0"], statement);
       context.emitInstruction("SUBI", [STACK_POINTER_REGISTER, "1"]);
     }
 
