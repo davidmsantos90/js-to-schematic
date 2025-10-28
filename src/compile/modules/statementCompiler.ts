@@ -50,26 +50,24 @@ export const createStatementCompiler: StatementCompiler = (
     assertIdentifier(callExpr.callee);
     const fnName = callExpr.callee.name;
 
-    // Push arguments onto stack in reverse order (so first arg is at lowest address)
-    for (let i = callExpr.arguments.length - 1; i >= 0; i--) {
+        // Push arguments onto stack using offsets (SP remains constant at 239)
+    // First arg at [SP+0], second at [SP-1], third at [SP-2], etc.
+    for (let i = 0; i < callExpr.arguments.length; i++) {
       const arg = callExpr.arguments[i];
       const argReg = compileValue(arg as Expression);
       
-      // STORE arg to stack at [SP]
-      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, argReg, "0"], arg as Expression);
-      // Decrement stack pointer
-      context.emitInstruction("SUBI", [STACK_POINTER_REGISTER, "1"]);
+      // STORE arg to stack at [SP - i]
+      const offset = i === 0 ? "0" : `-${i}`;
+      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, argReg, offset], arg as Expression);
     }
 
     const { startLabel } = context.newLabel(fnName);
     context.emitInstruction("CALL", [startLabel], callExpr);
     
-    // Clean up stack: SP += number of arguments
-    if (callExpr.arguments.length > 0) {
-      context.emitInstruction("ADDI", [STACK_POINTER_REGISTER, `${callExpr.arguments.length}`]);
-    }
+    // No cleanup needed - SP was never modified!
+    // Stack pointer remains at initial value (239)
     
-    // Note: Return value (if any) is now on top of stack at [SP + 1]
+    // Note: Return value (if any) is at [SP + 1]
     // Caller should load it immediately if needed
   };
 
@@ -172,17 +170,16 @@ export const createStatementCompiler: StatementCompiler = (
     context.emitLabel(startLabel);
     
     // Load parameters from stack into registers
-    // After CALL, SP points to next free slot, so params are at positive offsets
-    // First param is at [SP + paramCount], second at [SP + paramCount - 1], etc.
-    const paramCount = node.params.length;
+    // SP remains constant at 239 throughout execution
+    // First param at [SP+0], second at [SP-1], third at [SP-2], etc.
     node.params.forEach((param, index) => {
       assertIdentifier(param);
       const paramName = param.name;
       const paramReg = registers.set(paramName);
       
-      // Calculate offset: first param is at highest offset
-      const offset = paramCount - index;
-      context.emitInstruction("LOAD", [STACK_POINTER_REGISTER, paramReg, `${offset}`], null, `${paramName} = `);
+      // Calculate offset: first param at 0, second at -1, etc.
+      const offset = index === 0 ? "0" : `-${index}`;
+      context.emitInstruction("LOAD", [STACK_POINTER_REGISTER, paramReg, offset], null, `${paramName} = `);
     });
     
     compileStatement(node.body);
@@ -197,9 +194,8 @@ export const createStatementCompiler: StatementCompiler = (
   const compileReturnStatement = (statement?: ReturnStatement): void => {
     if (statement?.argument) {
       const valueReg = compileValue(statement.argument);
-      // Push return value onto stack
-      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, valueReg, "0"], statement);
-      context.emitInstruction("SUBI", [STACK_POINTER_REGISTER, "1"]);
+      // Store return value at [SP + 1] without modifying SP
+      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, valueReg, "1"], statement);
     }
 
     context.emitInstruction("RET", [], statement);

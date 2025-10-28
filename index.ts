@@ -3,7 +3,7 @@ import path from "path";
 
 import compile from "./src/compile/index.js";
 import assemble from "./src/assemble/index.js";
-import buildSchematicFile from "./src/schematic.js";
+import buildSchematicFile from "./src/schem/index.js";
 
 // Usage: node index.js <source.(js|as)>
 const [, , argPath] = process.argv;
@@ -26,7 +26,26 @@ fs.mkdirSync(`./dist/${name}`, { recursive: true });
 
 // 1. Compile or read assembly
 console.log("Starting compilation/assembly reading...");
-const assembly = ext === ".as" ? sourceCode.split(/\r?\n/) : compile(sourceCode, name);
+let assembly: string[];
+
+if (ext === ".as") {
+  // Read base assembly and combine with input assembly
+  const baseAssemblyPath = path.resolve("./code-files/base.as");
+  const baseAssembly = fs.readFileSync(baseAssemblyPath, "utf-8");
+  
+  // Combine: base assembly + blank line + input assembly
+  const combinedAssembly = baseAssembly + "\n\n" + sourceCode;
+  assembly = combinedAssembly.split(/\r?\n/);
+  
+  // Display the combined assembly
+  console.log("==> Assembly:\n");
+  assembly.forEach((line, index) => {
+    console.log(`${index.toString().padStart(2, " ")}.  ${line}`);
+  });
+} else {
+  // Compile JavaScript to assembly (already includes base)
+  assembly = compile(sourceCode, name);
+}
 
 // 2. Assemble to machine code
 console.log("\n\nAssembling to machine code...");
