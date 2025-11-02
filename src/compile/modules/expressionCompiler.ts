@@ -11,17 +11,28 @@ import type { CompilerContext } from "../CompilerContext.js";
 
 export type CompileValueFn = (node: Expression, varName?: string) => RegisterName;
 export type CompileComparisonFn = (test: BinaryExpression, trueLabel: string, falseLabel: string) => void;
+export type CompileCallExpressionWithReturnFn = (callExpr: any) => RegisterName;
 
-export type ExpressionCompiler = (context: CompilerContext) => {
+export type ExpressionCompiler = (
+  context: CompilerContext,
+  compileCallExpressionWithReturn?: CompileCallExpressionWithReturnFn
+) => {
   compileValue: CompileValueFn;
   compileComparison: CompileComparisonFn;
 };
 
-export const createExpressionCompiler: ExpressionCompiler = (context) => {
+export const createExpressionCompiler: ExpressionCompiler = (context, compileCallExpressionWithReturn) => {
   const compileValue: CompileValueFn = (node, varName) => {
     const assignPrefix = varName ? `${varName} = ` : "";
 
     switch (node.type) {
+      case "CallExpression": {
+        if (!compileCallExpressionWithReturn) {
+          throw new Error("CallExpression in value context requires compileCallExpressionWithReturn");
+        }
+        return compileCallExpressionWithReturn(node);
+      }
+
       case "Identifier":
         return registers.get(node.name);
 
@@ -72,7 +83,7 @@ export const createExpressionCompiler: ExpressionCompiler = (context) => {
           }
         }
 
-        // caso geral reg + reg
+        // caso geral reg + reg (includes CallExpression support)
         const leftReg = compileValue(left as Expression);
         const rightReg = compileValue(right);
 
@@ -86,6 +97,14 @@ export const createExpressionCompiler: ExpressionCompiler = (context) => {
             break;
           default:
             throw new Error("Unsupported binary op: " + node.operator);
+        }
+
+        // Free temporary registers if they're not the destination and not variables
+        if (leftReg !== dest && left.type !== "Identifier") {
+          registers.free(leftReg);
+        }
+        if (rightReg !== dest && right.type !== "Identifier") {
+          registers.free(rightReg);
         }
 
         return dest;

@@ -14,8 +14,13 @@ import registers from "./registers.js";
 export default function compile(program: Program): string[] {
   const context = createCompilerContext();
   
-  // Create expression compiler first (no dependencies)
-  const expressionCompiler = createExpressionCompiler(context);
+  // Forward declaration for circular dependency
+  let compileCallExpressionWithReturn: any;
+  
+  // Create expression compiler with call expression handler
+  const expressionCompiler = createExpressionCompiler(context, (callExpr) => {
+    return compileCallExpressionWithReturn(callExpr);
+  });
   
   // Define compileStatement function for circular dependencies
   const compileStatement: CompileStatementFn = (statement: Statement): void => {
@@ -74,6 +79,9 @@ export default function compile(program: Program): string[] {
     compileComparison: expressionCompiler.compileComparison,
     compileUpdateExpression: loopCompiler.compileUpdateExpression,
   });
+  
+  // Assign the actual implementation
+  compileCallExpressionWithReturn = statementCompiler.compileCallExpressionWithReturn;
 
   for (const statement of program.body) {
     compileStatement(statement as Statement);

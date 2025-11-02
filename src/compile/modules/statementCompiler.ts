@@ -32,6 +32,7 @@ export type StatementCompiler = (
   compileFunctionDeclaration: (node: FunctionDeclaration, compileStatement: CompileStatementFn) => void;
   compileReturnStatement: (statement?: ReturnStatement) => void;
   compileAssignmentExpression: (expression: Expression, name: string) => void;
+  compileCallExpressionWithReturn: (callExpr: CallExpression) => RegisterName;
 };
 
 export const createStatementCompiler: StatementCompiler = (
@@ -77,6 +78,17 @@ export const createStatementCompiler: StatementCompiler = (
     
     // Note: Return value (if any) is at [SP + 1]
     // Caller should load it immediately if needed
+  };
+
+  const compileCallExpressionWithReturn = (callExpr: CallExpression): RegisterName => {
+    // Execute the call
+    compileCallExpression(callExpr);
+    
+    // Load return value from stack at [SP + 1] into a new register
+    const resultReg = registers.next();
+    context.emitInstruction("LOAD", [STACK_POINTER_REGISTER, resultReg, "1"], callExpr);
+    
+    return resultReg;
   };
 
   const compileAssignmentExpression = (expression: Expression, name: string): void => {
@@ -127,9 +139,50 @@ export const createStatementCompiler: StatementCompiler = (
   const compileExpressionStatement = (node: ExpressionStatement): void => {
     switch (node.expression.type) {
       case "AssignmentExpression": {
-        const { left, right } = node.expression;
+        const { left, right, operator } = node.expression;
         assertIdentifier(left);
-        compileAssignmentExpression(right, left.name);
+        
+        // Handle compound assignment operators like +=, -=
+        if (operator !== "=") {
+          if (!registers.has(left.name)) {
+            throw new Error(`Variable ${left.name} not defined for compound assignment`);
+          }
+          
+          // For compound assignment, evaluate the right side first
+          const rightReg = compileValue(right);
+          const varReg = registers.get(left.name);
+          
+          // Convert compound operator to instruction
+          const binaryOp = operator.slice(0, -1);
+          
+          switch (binaryOp) {
+            case "+":
+              // Check if right side is a literal (can use ADDI)
+              if (right.type === "Literal") {
+                context.emitInstruction("ADDI", [varReg, right.value as string], right, `${left.name} += `);
+              } else {
+                context.emitInstruction("ADD", [varReg, rightReg, varReg], right, `${left.name} += `);
+              }
+              break;
+            case "-":
+              // Check if right side is a literal (can use SUBI)
+              if (right.type === "Literal") {
+                context.emitInstruction("SUBI", [varReg, right.value as string], right, `${left.name} -= `);
+              } else {
+                context.emitInstruction("SUB", [varReg, rightReg, varReg], right, `${left.name} -= `);
+              }
+              break;
+            default:
+              throw new Error(`Unsupported compound assignment operator: ${operator}`);
+          }
+          
+          // Free the right register if it's not the variable register
+          if (rightReg !== varReg) {
+            registers.free(rightReg);
+          }
+        } else {
+          compileAssignmentExpression(right, left.name);
+        }
         break;
       }
 
@@ -216,5 +269,6 @@ export const createStatementCompiler: StatementCompiler = (
     compileFunctionDeclaration,
     compileReturnStatement,
     compileAssignmentExpression,
+    compileCallExpressionWithReturn,
   };
 };
