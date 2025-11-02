@@ -32,7 +32,7 @@ export type StatementCompiler = (
   compileFunctionDeclaration: (node: FunctionDeclaration, compileStatement: CompileStatementFn) => void;
   compileReturnStatement: (statement?: ReturnStatement) => void;
   compileAssignmentExpression: (expression: Expression, name: string) => void;
-  compileCallExpressionWithReturn: (callExpr: CallExpression) => RegisterName;
+  compileCallExpressionWithReturn: (callExpr: CallExpression, commentPrefix?: string) => RegisterName;
 };
 
 export const createStatementCompiler: StatementCompiler = (
@@ -80,13 +80,13 @@ export const createStatementCompiler: StatementCompiler = (
     // Caller should load it immediately if needed
   };
 
-  const compileCallExpressionWithReturn = (callExpr: CallExpression): RegisterName => {
+  const compileCallExpressionWithReturn = (callExpr: CallExpression, commentPrefix?: string): RegisterName => {
     // Execute the call
     compileCallExpression(callExpr);
     
     // Load return value from stack at [SP + 1] into a new register
     const resultReg = registers.next();
-    context.emitInstruction("LOAD", [STACK_POINTER_REGISTER, resultReg, "1"], callExpr);
+    context.emitInstruction("LOAD", [STACK_POINTER_REGISTER, resultReg, "1"], callExpr, commentPrefix);
     
     return resultReg;
   };
@@ -149,7 +149,15 @@ export const createStatementCompiler: StatementCompiler = (
           }
           
           // For compound assignment, evaluate the right side first
-          const rightReg = compileValue(right);
+          // If it's a call expression, pass the assignment context
+          let rightReg: RegisterName;
+          if (right.type === "CallExpression") {
+            const commentPrefix = `${left.name} ${operator} `;
+            rightReg = compileCallExpressionWithReturn(right, commentPrefix);
+          } else {
+            rightReg = compileValue(right);
+          }
+          
           const varReg = registers.get(left.name);
           
           // Convert compound operator to instruction
@@ -255,10 +263,11 @@ export const createStatementCompiler: StatementCompiler = (
   const compileReturnStatement = (statement?: ReturnStatement): void => {
     if (statement?.argument) {
       const valueReg = compileValue(statement.argument);
-      // Store return value at [SP + 1] without modifying SP
-      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, valueReg, "1"], statement);
+      // Store return value at [SP + 1] without modifying SP - no comment on STORE
+      context.emitInstruction("STORE", [STACK_POINTER_REGISTER, valueReg, "1"], null);
     }
 
+    // Put the return comment only on the RET instruction (astToSource already adds "return")
     context.emitInstruction("RET", [], statement);
   };
 

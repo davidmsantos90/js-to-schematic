@@ -11,7 +11,7 @@ import type { CompilerContext } from "../CompilerContext.js";
 
 export type CompileValueFn = (node: Expression, varName?: string) => RegisterName;
 export type CompileComparisonFn = (test: BinaryExpression, trueLabel: string, falseLabel: string) => void;
-export type CompileCallExpressionWithReturnFn = (callExpr: any) => RegisterName;
+export type CompileCallExpressionWithReturnFn = (callExpr: any, commentPrefix?: string) => RegisterName;
 
 export type ExpressionCompiler = (
   context: CompilerContext,
@@ -44,6 +44,8 @@ export const createExpressionCompiler: ExpressionCompiler = (context, compileCal
         }
         
         const reg = registers.next();
+        // For LDI in expressions, pass assignPrefix which includes "=" for direct assignment
+        // or just empty for intermediate values
         context.emitInstruction("LDI", [reg, node.value as string], node, assignPrefix);
         return reg;
       }
@@ -53,7 +55,7 @@ export const createExpressionCompiler: ExpressionCompiler = (context, compileCal
 
         // caso registo + literal
         if (left.type === "Identifier" && right.type === "Literal") {
-          const leftReg = compileValue(left);
+          const leftReg = compileValue(left, varName);
 
           switch (node.operator) {
             case "+":
@@ -69,7 +71,7 @@ export const createExpressionCompiler: ExpressionCompiler = (context, compileCal
 
         // caso literal + registo
         if (left.type === "Literal" && right.type === "Identifier") {
-          const rightReg = compileValue(right);
+          const rightReg = compileValue(right, varName);
 
           switch (node.operator) {
             case "+":
@@ -84,8 +86,9 @@ export const createExpressionCompiler: ExpressionCompiler = (context, compileCal
         }
 
         // caso geral reg + reg (includes CallExpression support)
-        const leftReg = compileValue(left as Expression);
-        const rightReg = compileValue(right);
+        // Pass varName down to sub-expressions so LDIs show what variable they're for
+        const leftReg = compileValue(left as Expression, varName);
+        const rightReg = compileValue(right, varName);
 
         const dest = registers.get(varName);
         switch (node.operator) {

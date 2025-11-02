@@ -40,10 +40,44 @@ export const createCompilerContext = (): CompilerContext => {
   ) => {
     const instruction = getInstruction(mnemonic);
     const instructionText = instruction.toAssembly(...operands);
+    
+    // Generate operation-specific comments for LOAD and STORE
+    let comment: string | null = null;
+    if (mnemonic === "LOAD" && operands.length >= 3) {
+      // LOAD regA regB offset -> regB <- [regA + offset]
+      const [regA, regB, offset] = operands;
+      const offsetStr = offset === "0" ? "" : ` + ${offset}`;
+      const operation = `${regB} <- [${regA}${offsetStr}]`;
+      // If we have a prefix (like variable assignment or compound assignment)
+      // For "result = " -> "result <- [...]"
+      // For "result += " -> "result += [...]" (keep compound operator as-is)
+      if (prefix) {
+        if (prefix.match(/[+\-*/%]=/)) {
+          // Compound assignment - keep operator
+          comment = `${prefix.trim()} [${regA}${offsetStr}]`;
+        } else {
+          // Simple assignment - replace = with <-
+          comment = `${prefix.replace(/\s*=\s*$/, ' <-')} [${regA}${offsetStr}]`;
+        }
+      } else {
+        comment = operation;
+      }
+    } else if (mnemonic === "STORE" && operands.length >= 2) {
+      // STORE regA regB offset -> [regA + offset] <- regB
+      const [regA, regB, offset = "0"] = operands;
+      const offsetStr = offset === "0" ? "" : ` + ${offset}`;
+      comment = `[${regA}${offsetStr}] <- ${regB}`;
+    } else if (astNode) {
+      comment = `${prefix}${astToSource(astNode)}`;
+    } else if (prefix) {
+      // If we have a prefix but no astNode, just use the prefix
+      comment = prefix;
+    }
+    
     assembly.push({ 
       type: "instruction", 
       text: instructionText, 
-      comment: astNode ? `${prefix}${astToSource(astNode)}` : null 
+      comment 
     });
   };
 
