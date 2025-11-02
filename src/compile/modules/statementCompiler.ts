@@ -50,22 +50,30 @@ export const createStatementCompiler: StatementCompiler = (
     assertIdentifier(callExpr.callee);
     const fnName = callExpr.callee.name;
 
-        // Push arguments onto stack using offsets (SP remains constant at 239)
+    // Push arguments onto stack using offsets (SP remains constant at 232)
     // First arg at [SP+0], second at [SP-1], third at [SP-2], etc.
+    const argRegisters: string[] = [];
+    
     for (let i = 0; i < callExpr.arguments.length; i++) {
       const arg = callExpr.arguments[i];
       const argReg = compileValue(arg as Expression);
+      argRegisters.push(argReg);
       
       // STORE arg to stack at [SP - i]
       const offset = i === 0 ? "0" : `-${i}`;
       context.emitInstruction("STORE", [STACK_POINTER_REGISTER, argReg, offset], arg as Expression);
     }
 
+    // Free argument registers - they're no longer needed after being stored
+    for (const argReg of argRegisters) {
+      registers.free(argReg);
+    }
+
     const { startLabel } = context.newLabel(fnName);
     context.emitInstruction("CALL", [startLabel], callExpr);
     
     // No cleanup needed - SP was never modified!
-    // Stack pointer remains at initial value (239)
+    // Stack pointer remains at initial value (232)
     
     // Note: Return value (if any) is at [SP + 1]
     // Caller should load it immediately if needed

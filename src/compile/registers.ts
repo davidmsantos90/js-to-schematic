@@ -57,4 +57,11 @@ export default {
 
     return next;
   },
+
+  /** Free a register, making it available for reuse. */
+  free(reg: RegisterName): void {
+    if (GENERIC_REGISTERS.includes(reg as GenericRegisterName)) {
+      registers.set(reg as GenericRegisterName, false);
+    }
+  },
 };
