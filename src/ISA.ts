@@ -266,7 +266,7 @@ const ISA: ISADefinition = {
       opcode: "1110",
       description: "Loads memory content of (regA + offset) into regB",
 
-      toAssembly(regA, regB, offset) {
+      toAssembly(regA, regB, offset = "") {
         return `LOAD ${regA} ${regB} ${offset}`;
       },
       toMachine(regA, regB, offset) {
@@ -279,7 +279,7 @@ const ISA: ISADefinition = {
       opcode: "1111",
       description: "Stores regB content into memory (regA + offset)",
 
-      toAssembly(regA, regB, offset) {
+      toAssembly(regA, regB, offset = "") {
         return `STORE ${regA} ${regB} ${offset}`;
       },
       toMachine(regA, regB, offset = "0") {
@@ -402,6 +402,10 @@ const ISA: ISADefinition = {
         return ISA.instructions.BRANCH.toMachine("<", addr);
       },
     },
+  },
+
+  memory: {
+    SP: STACK_POINTER_REGISTER,
   },
 };
 

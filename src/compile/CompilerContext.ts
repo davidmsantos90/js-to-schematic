@@ -5,18 +5,28 @@ import { AssemblyEntry, assertIdentifier } from "../types/assembly.js";
 export interface CompilerContext {
   loopEndStack: string[];
   loopStartStack: string[];
-  emitInstruction: (mnemonic: string, operands?: string[], astNode?: Node | null, prefix?: string) => void;
+  emitInstruction: (
+    mnemonic: string,
+    operands?: string[],
+    astNode?: Node | null,
+    prefix?: string,
+  ) => void;
   emitLabel: (label: string) => void;
   emitBlank: () => void;
-  newLabel: (text: string, unique?: boolean) => { key: string; startLabel: string; endLabel: string };
+  emitDefine: (name: string, value: string | number) => void;
+  newLabel: (
+    text: string,
+    unique?: boolean,
+  ) => { key: string; startLabel: string; endLabel: string };
   getAssembly: () => string[];
+  astToSource: (node: Node) => string;
 }
 
 export const createCompilerContext = (): CompilerContext => {
   const loopEndStack: string[] = [];
   const loopStartStack: string[] = [];
   const assembly: AssemblyEntry[] = [];
-  
+
   // Label counter for unique labels
   const labelCounter = (() => {
     let count = 0;
@@ -40,44 +50,84 @@ export const createCompilerContext = (): CompilerContext => {
   ) => {
     const instruction = getInstruction(mnemonic);
     const instructionText = instruction.toAssembly(...operands);
-    
+
     // Generate operation-specific comments for LOAD and STORE
     let comment: string | null = null;
     if (mnemonic === "LOAD" && operands.length >= 3) {
       // LOAD regA regB offset -> regB <- [regA + offset]
-      const [regA, regB, offset] = operands;
-      const offsetStr = offset === "0" ? "" : ` + ${offset}`;
+      const [regA, regB, offsetValue] = operands;
+
+      const offsetStr = offsetValue ? ` + ${offsetValue}` : "";
       const operation = `${regB} <- [${regA}${offsetStr}]`;
+
       // If we have a prefix (like variable assignment or compound assignment)
       // For "result = " -> "result <- [...]"
       // For "result += " -> "result += [...]" (keep compound operator as-is)
       if (prefix) {
-        if (prefix.match(/[+\-*/%]=/)) {
+        // If prefix already contains "mem[" or "<-", it's a complete comment
+        if (prefix.includes("mem[") || prefix.includes("<-")) {
+          comment = prefix.trim();
+        } else if (prefix.match(/[+\-*/%]=/)) {
           // Compound assignment - keep operator
           comment = `${prefix.trim()} [${regA}${offsetStr}]`;
+        } else if (prefix.match(/\s*=\s*$/)) {
+          // Simple assignment prefix ending with "="
+          if (astNode) {
+            // Use astNode instead of register notation
+            comment = `${prefix.replace(/\s*=\s*$/, " <-")} ${astToSource(astNode)}`;
+          } else {
+            // Use register notation
+            comment = `${prefix.replace(/\s*=\s*$/, " <-")} [${regA}${offsetStr}]`;
+          }
+        } else if (astNode) {
+          // Prefix is a complete expression (like "arr[bubble]"), don't append register notation
+          comment = prefix.trim();
         } else {
-          // Simple assignment - replace = with <-
-          comment = `${prefix.replace(/\s*=\s*$/, ' <-')} [${regA}${offsetStr}]`;
+          // No astNode and no clear pattern - use register notation
+          comment = `${prefix.trim()} [${regA}${offsetStr}]`;
         }
       } else {
         comment = operation;
       }
     } else if (mnemonic === "STORE" && operands.length >= 2) {
       // STORE regA regB offset -> [regA + offset] <- regB
-      const [regA, regB, offset = "0"] = operands;
-      const offsetStr = offset === "0" ? "" : ` + ${offset}`;
-      comment = `[${regA}${offsetStr}] <- ${regB}`;
-    } else if (astNode) {
-      comment = `${prefix}${astToSource(astNode)}`;
+      const [regA, regB, offset] = operands;
+      // If we have a prefix (like "arr[0] <- "), show the value being stored
+      if (prefix) {
+        const trimmed = prefix.trim();
+        // Check if prefix is a complete statement (contains something after <-)
+        // vs an incomplete prefix (ends with <- and nothing after)
+        const isCompleteComment = trimmed.includes("<-") && !trimmed.match(/<-\s*$/);
+
+        if (isCompleteComment) {
+          // Complete comment like "arr[bubble] <- arr[nextBubble]"
+          comment = trimmed;
+        } else if (astNode) {
+          // Incomplete prefix like "arr[0] <-", append the value
+          comment = `${trimmed} ${astToSource(astNode)}`;
+        } else {
+          // Fallback to register notation
+          comment = `${trimmed} ${regB}`;
+        }
+      } else {
+        comment = `[${regA}${offset ? " + " + offset : ""}] <- ${regB}`;
+      }
     } else if (prefix) {
-      // If we have a prefix but no astNode, just use the prefix
-      comment = prefix;
+      // If prefix ends with assignment operator (=, <-, +=, -=, etc.), append astNode
+      // Otherwise just use the prefix (it's already the full expression)
+      if (prefix.match(/[=<+\-*/%]\s*$/) && astNode) {
+        comment = `${prefix}${astToSource(astNode)}`;
+      } else {
+        comment = prefix;
+      }
+    } else if (astNode) {
+      comment = astToSource(astNode);
     }
-    
-    assembly.push({ 
-      type: "instruction", 
-      text: instructionText, 
-      comment 
+
+    assembly.push({
+      type: "instruction",
+      text: instructionText,
+      comment,
     });
   };
 
@@ -97,9 +147,14 @@ export const createCompilerContext = (): CompilerContext => {
     assembly.push({ type: "blank", text: "" });
   };
 
+  const emitDefine = (name: string, value: string | number) => {
+    assembly.push({ type: "define", text: `define ${name} ${value}` });
+  };
+
   const getAssembly = (): string[] => {
     const labelScopeStack: string[] = [];
-    const scopePad = (extra: number = 0) => "  ".repeat(Math.max(labelScopeStack.length + extra, 0));
+    const scopePad = (extra: number = 0) =>
+      "  ".repeat(Math.max(labelScopeStack.length + extra, 0));
     const closeLabelScope = (label: string) => {
       // Pop all labels that start with the same index until one includes "_start"
       const [labelIndex] = label.split("_");
@@ -137,10 +192,13 @@ export const createCompilerContext = (): CompilerContext => {
           return `${paddedText}; ${comment}`;
         }
 
+        case "define":
+          return text; // Defines are not indented and have no comments
+
         case "blank":
         default:
           return "";
-        }
+      }
     });
   };
 
@@ -150,8 +208,10 @@ export const createCompilerContext = (): CompilerContext => {
     emitInstruction,
     emitLabel,
     emitBlank,
+    emitDefine,
     newLabel,
     getAssembly,
+    astToSource,
   };
 };
 
@@ -199,7 +259,21 @@ function astToSource(node: Node): string {
     case "UnaryExpression":
       return `${node.operator}${astToSource(node.argument)}`;
     case "UpdateExpression":
-      return node.prefix ? `${node.operator}${astToSource(node.argument)}` : `${astToSource(node.argument)}${node.operator}`;
+      return node.prefix
+        ? `${node.operator}${astToSource(node.argument)}`
+        : `${astToSource(node.argument)}${node.operator}`;
+    case "MemberExpression":
+      const object = astToSource(node.object);
+      const property = node.computed
+        ? `[${astToSource(node.property)}]`
+        : `.${astToSource(node.property)}`;
+      return `${object}${property}`;
+    case "ExpressionStatement":
+      return astToSource(node.expression);
+    case "ArrayExpression":
+      return `[${node.elements.map((e) => (e ? astToSource(e) : "")).join(", ")}]`;
+    case "ArrayPattern":
+      return `[${node.elements.map((e) => (e ? astToSource(e) : "")).join(", ")}]`;
     default:
       return `/* ${node.type} */`;
   }

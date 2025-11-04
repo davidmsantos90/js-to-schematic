@@ -35,7 +35,7 @@ export default (code: string, name: string) => {
 
   const baseAssembly = loadBaseAssembly();
   const compiledAssembly = compile(program);
-  
+
   // Combine base assembly with compiled code
   const assembly: string[] = [...baseAssembly, "", ...compiledAssembly];
 

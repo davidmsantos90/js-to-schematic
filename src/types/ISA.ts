@@ -54,7 +54,7 @@ export function asBinaryString(value: string): BinaryString {
 
 // ISA definition
 
-export const INSTRUCTION_WORD_SIZE = 16;
+export const INSTRUCTION_WORD_SIZE = 16 as const;
 export const REGISTER_SIZE = 4;
 export const IMMEDIATE_SIZE = 8;
 export const ADDRESS_SIZE = 10;

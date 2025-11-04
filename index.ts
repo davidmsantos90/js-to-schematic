@@ -32,11 +32,11 @@ if (ext === ".as") {
   // Read base assembly and combine with input assembly
   const baseAssemblyPath = path.resolve("./code-files/base.as");
   const baseAssembly = fs.readFileSync(baseAssemblyPath, "utf-8");
-  
+
   // Combine: base assembly + blank line + input assembly
   const combinedAssembly = baseAssembly + "\n\n" + sourceCode;
   assembly = combinedAssembly.split(/\r?\n/);
-  
+
   // Display the combined assembly
   console.log("==> Assembly:\n");
   assembly.forEach((line, index) => {

@@ -33,16 +33,17 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
       }
       continue; // Don't count defines as instructions
     }
-    
+
     if (line.startsWith(".")) {
       labels[line] = `${address}`;
     } else {
       instructions.push(line);
       // Find the original line from the program (before cleanup)
-      const originalLine = program.find(progLine => {
-        const [code] = progLine.split(";");
-        return code.trim() === line;
-      }) || line;
+      const originalLine =
+        program.find((progLine) => {
+          const [code] = progLine.split(";");
+          return code.trim() === line;
+        }) || line;
       originalLines.push(originalLine.trim());
       address++;
     }
@@ -56,7 +57,7 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
       if (constants[operand] != null) {
         return constants[operand];
       }
-      
+
       // Then check if it's a label
       const { [operand]: address } = labels;
       return address != null ? address : operand;
@@ -64,7 +65,7 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
 
     // Create enhanced assembly comment with resolved label addresses and constants
     let enhancedAssembly = originalLines[index];
-    
+
     // Replace labels with "label (address)" format in the comment
     opsRaw.forEach((operand, opIndex) => {
       if (labels[operand] != null) {
@@ -76,10 +77,10 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
       }
     });
 
-    return { 
-      mnemonic, 
-      operands, 
-      originalAssembly: enhancedAssembly 
+    return {
+      mnemonic,
+      operands,
+      originalAssembly: enhancedAssembly,
     };
   });
 };
@@ -94,6 +95,6 @@ export const assembleInstruction = ({
 
   return {
     machineCode: instruction.toMachine(...operands),
-    assembly: originalAssembly
+    assembly: originalAssembly,
   };
 };

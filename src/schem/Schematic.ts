@@ -12,7 +12,7 @@ const getMetadataTag = (origin: number[]): Compound => ({
         EditingPlatform: { type: "string", value: "enginehub:fabric" },
         Origin: {
           type: "intArray",
-          value: origin
+          value: origin,
         },
         Platforms: {
           type: "compound",
@@ -21,14 +21,14 @@ const getMetadataTag = (origin: number[]): Compound => ({
               type: "compound",
               value: {
                 Name: { type: "string", value: "Fabric-Official" },
-                Version: { type: "string", value: "7.3.16+cbf4bd5" }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+                Version: { type: "string", value: "7.3.16+cbf4bd5" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 });
 
 export default class Schematic {
@@ -41,7 +41,9 @@ export default class Schematic {
   origin: number[];
 
   constructor(
-    width: number, height: number, length: number,
+    width: number,
+    height: number,
+    length: number,
     palette: Record<string, number>,
     offset: number[] = [0, 0, 0],
     origin: number[] = [0, 0, 0],
@@ -66,14 +68,17 @@ export default class Schematic {
   }
 
   setBlock(x: number, y: number, z: number, paletteId: number) {
-    const localX = x// - this.offset[0];
-    const localY = y// - this.offset[1];
-    const localZ = z// - this.offset[2];
+    const localX = x; // - this.offset[0];
+    const localY = y; // - this.offset[1];
+    const localZ = z; // - this.offset[2];
 
     if (
-      localX < 0 || localX >= this.width ||
-      localY < 0 || localY >= this.height ||
-      localZ < 0 || localZ >= this.length
+      localX < 0 ||
+      localX >= this.width ||
+      localY < 0 ||
+      localY >= this.height ||
+      localZ < 0 ||
+      localZ >= this.length
     ) {
       throw new Error(`Coordinates out of bounds after offset: (${localX}, ${localY}, ${localZ})`);
     }
@@ -96,7 +101,7 @@ export default class Schematic {
       Object.entries(this._palette).map(([name, id]) => [
         name,
         { type: "int" as const, value: id },
-      ])
+      ]),
     );
   }
 
@@ -116,12 +121,7 @@ export default class Schematic {
           const idx = incoming._calculateIndex(x, y, z);
           const blockId = incoming.blocks[idx];
           if (blockId !== incoming._palette["minecraft:air"]) {
-            this.setBlock(
-              x + placePosition.x,
-              y + placePosition.y,
-              z + placePosition.z,
-              blockId
-            );
+            this.setBlock(x + placePosition.x, y + placePosition.y, z + placePosition.z, blockId);
           }
         }
       }
@@ -139,7 +139,7 @@ export default class Schematic {
         Width: { type: "short", value: this.width }, // X
         Height: { type: "short", value: this.height }, // Y
         Length: { type: "short", value: this.length }, // Z
-        Offset: { type: "intArray", value: this.offset.map(v => -v) },
+        Offset: { type: "intArray", value: this.offset.map((v) => -v) },
 
         Metadata: getMetadataTag(this.origin),
 
@@ -147,7 +147,7 @@ export default class Schematic {
         PaletteMax: { type: "int", value: this.paletteMax },
         Palette: { type: "compound", value: this.palette },
         BlockData: { type: "byteArray", value: Array.from(this.blocks) },
-        BlockEntities: { type: "list", value: { type: "compound", value: [] } }
+        BlockEntities: { type: "list", value: { type: "compound", value: [] } },
 
         // version 3
         // Blocks: {
@@ -158,7 +158,7 @@ export default class Schematic {
         //     BlockEntities: { type: "list", value: { type: "compound", value: [] } }
         //   }
         // }
-      }
+      },
     };
 
     // console.log("Schematic NBT structure:", nbtData);
@@ -166,4 +166,4 @@ export default class Schematic {
     const raw = nbt.writeUncompressed(nbtData);
     return gzipSync(raw);
   }
-};
+}

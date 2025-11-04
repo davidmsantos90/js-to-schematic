@@ -1,6 +1,6 @@
 import ISA from "../ISA";
 import { asBitArray, BinaryString, Bit } from "../types/ISA";
-import { Direction } from "../types/schematic";
+import { Direction, Position3D } from "../types/schematic";
 import Schematic from "./Schematic";
 
 function generatePositions(
@@ -10,8 +10,10 @@ function generatePositions(
   const memStart = { ...origin };
   const posList: Array<Position3D> = []; // 1024 entradas
 
-  for (let i = 0; i < 2; i++) {      // duas "faces" (norte/sul)
-    for (let j = 0; j < 32; j++) {   // 32 colunas por face
+  for (let i = 0; i < 2; i++) {
+    // duas "faces" (norte/sul)
+    for (let j = 0; j < 32; j++) {
+      // 32 colunas por face
       const pos = { ...memStart };
 
       // 180° rotation: invert Z for second side
@@ -20,7 +22,8 @@ function generatePositions(
       pos.x += 2 * j; // was: pos.x -= 2 * j
       if (j >= 16) pos.x += 4; // was: pos.x -= 4
 
-      for (let k = 0; k < 16; k++) { // 16 grupos de 32 instruções
+      for (let k = 0; k < 16; k++) {
+        // 16 grupos de 32 instruções
         posList.push({ ...pos });
 
         // 180° rotation: invert Z direction
@@ -37,42 +40,42 @@ function generatePositions(
 
   // ---------- Compute bounds ----------
   const VERTICAL_DEPTH = 32; // deepest placed bit offset
-  
+
   const min = {
-    x: Math.min(...posList.map(p => p.x)),
+    x: Math.min(...posList.map((p) => p.x)),
     y: -(VERTICAL_DEPTH + 2),
-    z: Math.min(...posList.map(p => p.z))
+    z: Math.min(...posList.map((p) => p.z)),
   };
   const max = {
-    x: Math.max(...posList.map(p => p.x)),
+    x: Math.max(...posList.map((p) => p.x)),
     y: 0,
-    z: Math.max(...posList.map(p => p.z))
+    z: Math.max(...posList.map((p) => p.z)),
   };
 
   // ---------- Transladar para positivo ----------
   const translation = {
     x: -min.x, // mover tudo de modo a que min.x = 0
     y: -min.y,
-    z: -min.z
+    z: -min.z,
   };
 
-  const shiftedPositions = posList.map(p => ({
+  const shiftedPositions = posList.map((p) => ({
     x: p.x + translation.x,
     y: p.y + translation.y,
-    z: p.z + translation.z
+    z: p.z + translation.z,
   }));
 
   const shiftedOrigin = {
     x: origin.x + translation.x,
     y: origin.y + translation.y,
-    z: origin.z + translation.z
+    z: origin.z + translation.z,
   };
 
   // ---------- Compute offset ----------
   const offset = {
     x: min.x - origin.x,
     y: min.y - origin.y,
-    z: min.z - origin.z
+    z: min.z - origin.z,
   };
 
   // console.log("Offset:", offset);
@@ -84,7 +87,7 @@ function generatePositions(
     origin: [shiftedOrigin.x, shiftedOrigin.y, shiftedOrigin.z],
     offset: [offset.x, offset.y, offset.z],
     bounds: { min, max },
-    translation
+    translation,
   };
 }
 
@@ -106,7 +109,7 @@ export default function createSchematic(machineCodeLines: BinaryString[]) {
   const instructions: BinaryString[] = [...machineCodeLines];
   while (instructions.length < TOTAL_INSTRUCTIONS)
     instructions.push(ISA.instructions.NOOP.toMachine());
-  
+
   if (instructions.length > TOTAL_INSTRUCTIONS)
     throw new Error(`Too many instructions: ${instructions.length}`);
 
@@ -131,11 +134,8 @@ export default function createSchematic(machineCodeLines: BinaryString[]) {
     "minecraft:repeater[facing=south]": REP_SOUTH,
   };
 
-
   // ---------- Write instructions (python logic) ----------
-  const schematic = new Schematic(
-    width, height, length, palette, offset, origin
-  );
+  const schematic = new Schematic(width, height, length, palette, offset, origin);
 
   instructions.forEach((line, address) => {
     // console.log(`Writing instruction ${address}:`, posList[address]);

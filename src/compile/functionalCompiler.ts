@@ -1,4 +1,5 @@
 import type { Directive, ModuleDeclaration, Program, Statement } from "estree";
+import { STACK_POINTER_REGISTER } from "../types/ISA.js";
 import { createCompilerContext } from "./CompilerContext.js";
 import { createExpressionCompiler } from "./modules/expressionCompiler.js";
 import { createLoopCompiler, type CompileStatementFn } from "./modules/loopCompiler.js";
@@ -8,13 +9,8 @@ import registers from "./memory/registers.js";
 export default function compile(program: Program): string[] {
   const context = createCompilerContext();
 
-  // Forward declaration for circular dependency
-  let compileCallExpressionWithReturn: any;
-
-  // Create expression compiler with call expression handler
-  const expressionCompiler = createExpressionCompiler(context, (callExpr) => {
-    return compileCallExpressionWithReturn(callExpr);
-  });
+  // Create expression compiler first (no dependencies)
+  const expressionCompiler = createExpressionCompiler(context);
 
   // Define compileStatement function for circular dependencies
   const compileStatement: CompileStatementFn = (statement: Statement): void => {
@@ -26,9 +22,7 @@ export default function compile(program: Program): string[] {
         return statementCompiler.compileFunctionDeclaration(statement, compileStatement);
 
       case "BlockStatement":
-        registers.enterScope();
         statement.body.forEach(compileStatement);
-        registers.exitScope();
         return;
 
       case "BreakStatement":
@@ -76,8 +70,7 @@ export default function compile(program: Program): string[] {
     compileUpdateExpression: loopCompiler.compileUpdateExpression,
   });
 
-  // Assign the actual implementation
-  compileCallExpressionWithReturn = statementCompiler.compileCallExpressionWithReturn;
+  // r15 is initialized in base.as with STACK_POINTER (constant throughout execution)
 
   for (const statement of program.body) {
     compileStatement(statement as Statement);

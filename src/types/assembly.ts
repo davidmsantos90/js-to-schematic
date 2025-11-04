@@ -1,6 +1,6 @@
 import { Expression, Identifier, Pattern, Super } from "estree";
 export interface AssemblyEntry {
-  type: "instruction" | "label" | "blank";
+  type: "instruction" | "label" | "blank" | "define";
   text: string;
   comment?: string | null;
 }
