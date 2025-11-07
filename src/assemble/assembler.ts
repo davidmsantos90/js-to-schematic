@@ -1,4 +1,4 @@
-import ISA, { getInstruction } from "../ISA.js";
+import { getInstruction } from "../ISA";
 
 export const cleanup = (program: string[]) =>
   program
@@ -67,7 +67,7 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
     let enhancedAssembly = originalLines[index];
 
     // Replace labels with "label (address)" format in the comment
-    opsRaw.forEach((operand, opIndex) => {
+    opsRaw.forEach((operand) => {
       if (labels[operand] != null) {
         const labelAddress = labels[operand];
         enhancedAssembly = enhancedAssembly.replace(operand, `${operand} (${labelAddress})`);

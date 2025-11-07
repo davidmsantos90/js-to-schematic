@@ -1,5 +1,6 @@
 import nbt, { Compound, NBT } from "prismarine-nbt";
 import { gzipSync } from "zlib";
+
 import { Position3D } from "../types/schematic";
 
 const getMetadataTag = (origin: number[]): Compound => ({

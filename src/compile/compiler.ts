@@ -1,86 +1,12 @@
-import type { Directive, ModuleDeclaration, Program, Statement } from "estree";
-import { createCompilerContext } from "./CompilerContext.js";
-import { createExpressionCompiler } from "./modules/expressionCompiler.js";
-import { createLoopCompiler, type CompileStatementFn } from "./modules/loopCompiler.js";
-import { createStatementCompiler } from "./modules/statementCompiler.js";
-import registers from "./memory/registers.js";
+import type { Program, Statement } from "estree";
+
+import { createCompilerContext } from "./CompilerContext";
 
 export default function compile(program: Program): string[] {
   const context = createCompilerContext();
 
-  // Forward declaration for circular dependency
-  let compileCallExpressionWithReturn: any;
-
-  // Create expression compiler with call expression handler
-  const expressionCompiler = createExpressionCompiler(context, (callExpr) => {
-    return compileCallExpressionWithReturn(callExpr);
-  });
-
-  // Define compileStatement function for circular dependencies
-  const compileStatement: CompileStatementFn = (statement: Statement): void => {
-    switch (statement.type) {
-      case "VariableDeclaration":
-        return statementCompiler.compileVariableDeclaration(statement);
-
-      case "FunctionDeclaration":
-        return statementCompiler.compileFunctionDeclaration(statement, compileStatement);
-
-      case "BlockStatement":
-        registers.enterScope();
-        statement.body.forEach(compileStatement);
-        registers.exitScope();
-        return;
-
-      case "BreakStatement":
-        return loopCompiler.compileBreakStatement();
-
-      case "ContinueStatement":
-        return loopCompiler.compileContinueStatement();
-
-      case "ExpressionStatement":
-        return statementCompiler.compileExpressionStatement(statement);
-
-      case "IfStatement":
-        return statementCompiler.compileIfStatement(statement, compileStatement);
-
-      case "WhileStatement":
-        return loopCompiler.compileWhileStatement(statement);
-
-      case "ForStatement":
-        return loopCompiler.compileForStatement(statement);
-
-      case "DoWhileStatement":
-        return loopCompiler.compileDoWhileStatement(statement);
-
-      case "ReturnStatement":
-        return statementCompiler.compileReturnStatement(statement);
-
-      case "EmptyStatement":
-        // Empty statement (just a semicolon) - no-op
-        return;
-
-      default:
-        throw new Error("Unsupported statement type: " + statement.type);
-    }
-  };
-
-  // Create compilers that need compileStatement dependency
-  const loopCompiler = createLoopCompiler(context, {
-    compileComparison: expressionCompiler.compileComparison,
-    compileStatement,
-  });
-
-  const statementCompiler = createStatementCompiler(context, {
-    compileValue: expressionCompiler.compileValue,
-    compileComparison: expressionCompiler.compileComparison,
-    compileUpdateExpression: loopCompiler.compileUpdateExpression,
-  });
-
-  // Assign the actual implementation
-  compileCallExpressionWithReturn = statementCompiler.compileCallExpressionWithReturn;
-
-  for (const statement of program.body) {
-    compileStatement(statement as Statement);
+  for (const node of program.body) {
+    context.compileNode(node);
   }
 
   context.emitBlank();

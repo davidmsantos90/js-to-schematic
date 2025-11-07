@@ -51,7 +51,7 @@ export default {
    * @param {number} length array length
    * @return array info
    */
-  allocateArray(length: number, scope: number) {
+  Array(length: number, scope: number) {
     const allocation = allocateMemoryAddress(length, scope);
 
     const offset: number = Math.max(0, length - MAX_ARRAY_OFFSET - 1);
@@ -61,8 +61,12 @@ export default {
     return { ...allocation, base, offset } as const;
   },
 
+  String(length: number, scope: number) {
+    return this.Array(length, scope);
+  },
+
   /** Allocate a single memory address. */
-  allocateValue(scope: number) {
+  Value(scope: number) {
     return allocateMemoryAddress(1, scope);
   },
 

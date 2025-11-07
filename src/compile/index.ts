@@ -1,7 +1,8 @@
+import esprima, { Program } from "esprima";
 import fs from "fs";
 import path from "path";
-import esprima, { Program } from "esprima";
-import compile from "./compiler.js";
+
+import compile from "./compiler";
 
 const ASSEMBLY_EXT = "as";
 const BASE_ASSEMBLY_PATH = path.resolve("code-files/base.as");

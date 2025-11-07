@@ -1,5 +1,5 @@
 // Bubble sort with array support using array.length
-let array = [64, 34, 25, 12, 22, 11, 90, 88];
+let array = [64, 34, 25, 12, 22, 11, 90, 88, 1, 50, 55, 10];
 let size = array.length - 1;
 
 // let index = 0;

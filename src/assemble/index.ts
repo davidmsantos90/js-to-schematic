@@ -1,5 +1,7 @@
 import fs from "fs";
-import { replaceLabels, assembleInstruction } from "./assembler.js";
+
+import type { AssemblyEntry } from "../types/assembly";
+import { assembleInstruction, replaceLabels } from "./assembler";
 
 const save = (code: string[], name: string) => {
   fs.writeFileSync(`./dist/${name}/${name}.mc`, code.join("\n"));

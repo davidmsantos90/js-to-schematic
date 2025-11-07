@@ -53,15 +53,15 @@ const toBinary = (value: string, bits: number, signed: boolean = false): BinaryS
 const registerToBinary = (register: RegisterName) =>
   toBinary(register.replace("r", ""), REGISTER_SIZE);
 
-const binaryToSignedDecimal = (value: BinaryString): number => {
-  const decimal = parseInt(value, 2);
-  if (value[0] !== "1") {
-    return decimal;
-  }
+// const binaryToSignedDecimal = (value: BinaryString): number => {
+//   const decimal = parseInt(value, 2);
+//   if (value[0] !== "1") {
+//     return decimal;
+//   }
 
-  const bits = value.length;
-  return decimal - (1 << bits);
-};
+//   const bits = value.length;
+//   return decimal - (1 << bits);
+// };
 
 const ISA: ISADefinition = {
   wordSize: INSTRUCTION_WORD_SIZE,
@@ -404,9 +404,9 @@ const ISA: ISADefinition = {
     },
   },
 
-  memory: {
-    SP: STACK_POINTER_REGISTER,
-  },
+  // memory: {
+  //   SP: STACK_POINTER_REGISTER,
+  // },
 };
 
 export const getInstruction = (mnemonic: string): Instruction => {

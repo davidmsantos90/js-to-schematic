@@ -2,3 +2,5 @@ dist
 dist-ts
 node_modules
 *.log
+src/test
+code-files

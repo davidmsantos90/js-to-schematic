@@ -5,7 +5,7 @@ import Schematic from "./Schematic";
 
 function generatePositions(
   origin: Position3D = { x: 0, y: 0, z: 0 },
-  direction: Direction = "south",
+  // direction: Direction = "south",
 ) {
   const memStart = { ...origin };
   const posList: Array<Position3D> = []; // 1024 entradas
@@ -122,10 +122,10 @@ export default function createSchematic(machineCodeLines: BinaryString[]) {
   // console.log(`Schematic size: ${width} x ${height} x ${length} (W x H x L)`);
 
   // Palette (include north/south repeaters now)
-  const AIR = 0,
-    PURPLE = 1,
-    REP_NORTH = 2,
-    REP_SOUTH = 3;
+  // const AIR = 0;
+  const PURPLE = 1;
+  const REP_NORTH = 2;
+  const REP_SOUTH = 3;
 
   const palette = {
     // "minecraft:air": AIR,

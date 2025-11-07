@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 
-import compile from "./src/compile/index.js";
 import assemble from "./src/assemble/index.js";
+import compile from "./src/compile/index.js";
 import buildSchematicFile from "./src/schem/index.js";
 
 // Usage: node index.js <source.(js|as)>

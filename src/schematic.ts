@@ -1,8 +1,9 @@
 import fs from "fs";
-import nbt, { type NBT, type TagType } from "prismarine-nbt";
+import nbt, { type NBT } from "prismarine-nbt";
 import { gzipSync } from "zlib";
-import { asBitArray, BinaryString, Bit } from "./types/ISA";
+
 import ISA from "./ISA";
+import { asBitArray, BinaryString, Bit } from "./types/ISA";
 
 class Schematic {
   width: number;
@@ -178,16 +179,16 @@ interface Position3D extends Position2D {
 }
 
 // matriz de rotação no plano XZ
-const rotations: Record<string, (x: number, z: number) => [number, number]> = {
-  north: (x: number, z: number) => [x, z], // identidade (facing north: X increases, Z decreases)
-  east: (x: number, z: number) => [-z, x], // 90° CW from north
-  south: (x: number, z: number) => [-x, -z], // 180° from north
-  west: (x: number, z: number) => [z, -x], // 270° CW from north (or 90° CCW)
-};
+// const rotations: Record<string, (x: number, z: number) => [number, number]> = {
+//   north: (x: number, z: number) => [x, z], // identidade (facing north: X increases, Z decreases)
+//   east: (x: number, z: number) => [-z, x], // 90° CW from north
+//   south: (x: number, z: number) => [-x, -z], // 180° from north
+//   west: (x: number, z: number) => [z, -x], // 270° CW from north (or 90° CCW)
+// };
 
 function generatePositions(
   origin: Position3D = { x: 0, y: 0, z: 0 },
-  direction: Direction = "south",
+  // direction: Direction = "south",
 ) {
   const memStart = { ...origin };
   const posList: Array<Position3D> = []; // 1024 entradas
@@ -327,10 +328,10 @@ export default function generateInstructionMemorySchematic(
   // console.log(`Schematic size: ${width} x ${height} x ${length} (W x H x L)`);
 
   // Palette (include north/south repeaters now)
-  const AIR = 0,
-    PURPLE = 1,
-    REP_NORTH = 2,
-    REP_SOUTH = 3;
+  // const AIR = 0;
+  const PURPLE = 1;
+  const REP_NORTH = 2;
+  const REP_SOUTH = 3;
 
   const palette = {
     // "minecraft:air": AIR,

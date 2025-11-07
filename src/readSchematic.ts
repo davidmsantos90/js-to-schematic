@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import zlib from "zlib";
 import nbt from "prismarine-nbt";
+import zlib from "zlib";
 
 function loadSchematic(filePath: string): void {
   const buffer = fs.readFileSync(filePath);

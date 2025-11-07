@@ -1,30 +1,16 @@
-import type { Node } from "estree";
-import { getInstruction } from "../ISA.js";
-import { AssemblyEntry, assertIdentifier } from "../types/assembly.js";
+import type { Directive, ModuleDeclaration, Statement } from "estree";
 
-export interface CompilerContext {
-  loopEndStack: string[];
-  loopStartStack: string[];
-  emitInstruction: (
-    mnemonic: string,
-    operands?: string[],
-    astNode?: Node | null,
-    prefix?: string,
-  ) => void;
-  emitLabel: (label: string) => void;
-  emitBlank: () => void;
-  emitDefine: (name: string, value: string | number) => void;
-  newLabel: (
-    text: string,
-    unique?: boolean,
-  ) => { key: string; startLabel: string; endLabel: string };
-  getAssembly: () => string[];
-  astToSource: (node: Node) => string;
-}
+import { getInstruction } from "../ISA";
+import { AssemblyEntry, assertIdentifier } from "../types/assembly";
+import { CompilerContext, EstreeNode } from "../types/compile";
+import compileStatement from "./modules/statement";
+import Stack from "./Stack";
+import { isDirective, isModuleDeclaration } from "./utils/nodeTypeDetector";
 
 export const createCompilerContext = (): CompilerContext => {
-  const loopEndStack: string[] = [];
-  const loopStartStack: string[] = [];
+  const breakHandlerStack = new Stack<string>("break used outside a valid context");
+  const continueHandlerStack = new Stack<string>("continue used outside a valid context");
+  const errorHandlerStack = new Stack<string>();
   const assembly: AssemblyEntry[] = [];
 
   // Label counter for unique labels
@@ -45,7 +31,7 @@ export const createCompilerContext = (): CompilerContext => {
   const emitInstruction = (
     mnemonic: string,
     operands: string[] = [],
-    astNode: Node | null = null,
+    astNode: EstreeNode | null = null,
     prefix: string = "",
   ) => {
     const instruction = getInstruction(mnemonic);
@@ -202,9 +188,10 @@ export const createCompilerContext = (): CompilerContext => {
     });
   };
 
-  return {
-    loopEndStack,
-    loopStartStack,
+  const context: CompilerContext = {
+    breakHandlerStack,
+    continueHandlerStack,
+    errorHandlerStack,
     emitInstruction,
     emitLabel,
     emitBlank,
@@ -212,11 +199,25 @@ export const createCompilerContext = (): CompilerContext => {
     newLabel,
     getAssembly,
     astToSource,
+
+    compileNode(node: Statement | Directive | ModuleDeclaration) {
+      if (isModuleDeclaration(node)) {
+        throw new Error(`ModuleDeclaration not supported in compileStatement: ${node.type}`);
+      }
+
+      if (isDirective(node)) {
+        throw new Error(`Directive not supported in compileStatement: ${node.type}`);
+      }
+
+      return compileStatement.call(context, node);
+    },
   };
+
+  return context;
 };
 
 // Helper function - will be moved to a shared utils file later
-function astToSource(node: Node): string {
+function astToSource(node: EstreeNode): string {
   if (!node) return "";
 
   switch (node.type) {
@@ -249,11 +250,13 @@ function astToSource(node: Node): string {
       return "break";
     case "ContinueStatement":
       return "continue";
-    case "ForStatement":
+    case "ForStatement": {
       const init = node.init ? astToSource(node.init) : "";
       const test = node.test ? astToSource(node.test) : "";
       const update = node.update ? astToSource(node.update) : "";
+
       return `for (${init}; ${test}; ${update})`;
+    }
     case "DoWhileStatement":
       return `do { ... } while (${astToSource(node.test)})`;
     case "UnaryExpression":
@@ -262,12 +265,14 @@ function astToSource(node: Node): string {
       return node.prefix
         ? `${node.operator}${astToSource(node.argument)}`
         : `${astToSource(node.argument)}${node.operator}`;
-    case "MemberExpression":
+    case "MemberExpression": {
       const object = astToSource(node.object);
       const property = node.computed
         ? `[${astToSource(node.property)}]`
         : `.${astToSource(node.property)}`;
+
       return `${object}${property}`;
+    }
     case "ExpressionStatement":
       return astToSource(node.expression);
     case "ArrayExpression":

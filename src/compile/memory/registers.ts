@@ -1,6 +1,5 @@
-import { assertRegisterName, GenericRegisterName, RegisterName } from "../../types/ISA.js";
-import ISA from "../../ISA.js";
-import memoryAllocator from "./memoryAllocator.js";
+import ISA from "../../ISA";
+import { assertRegisterName, GenericRegisterName, RegisterName } from "../../types/ISA";
 import {
   ArrayInfo,
   ConstInfo,
@@ -8,10 +7,10 @@ import {
   isConstInfo,
   isMemoryInfo,
   isRegisterInfo,
-  MemoryAddress,
   MemoryInfo,
   VariableInfo,
-} from "../../types/memory.js";
+} from "../../types/memory";
+import memoryAllocator from "./memoryAllocator";
 
 const GENERIC_REGISTERS: GenericRegisterName[] = Object.keys(ISA.registers).filter(
   (key) => ISA.registers[key].special == null,
@@ -94,10 +93,14 @@ export default {
       throw new Error(`Variable ${key} already exists`);
     }
 
-    const allocation = memoryAllocator.allocateArray(length, currentScope);
+    const allocation = memoryAllocator.Array(length, currentScope);
     variables.set(key, { type: "array", ...allocation });
 
     return allocation;
+  },
+
+  setString(key: string, length: number) {
+    return this.setArray(key, length);
   },
 
   /**
@@ -112,7 +115,7 @@ export default {
       throw new Error(`Variable ${key} already exists`);
     }
 
-    const allocation = memoryAllocator.allocateValue(currentScope);
+    const allocation = memoryAllocator.Value(currentScope);
     variables.set(key, { type: "memory", ...allocation });
   },
 

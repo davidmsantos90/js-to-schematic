@@ -1,4 +1,5 @@
 import fs from "fs";
+
 import { BinaryString } from "../types/ISA";
 import createInstructionMemory from "./IntructionMemory";
 import Schematic from "./Schematic";
