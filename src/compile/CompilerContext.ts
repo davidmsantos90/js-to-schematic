@@ -5,6 +5,7 @@ import { AssemblyEntry, assertIdentifier } from "../types/assembly";
 import { CompilerContext, EstreeNode } from "../types/compile";
 import compileStatement from "./modules/statement";
 import Stack from "./Stack";
+import labelsGenerator from "./utils/labels";
 import { isDirective, isModuleDeclaration } from "./utils/nodeTypeDetector";
 
 export const createCompilerContext = (): CompilerContext => {
@@ -12,21 +13,7 @@ export const createCompilerContext = (): CompilerContext => {
   const continueHandlerStack = new Stack<string>("continue used outside a valid context");
   const errorHandlerStack = new Stack<string>();
   const assembly: AssemblyEntry[] = [];
-
-  // Label counter for unique labels
-  const labelCounter = (() => {
-    let count = 0;
-    return () => count++;
-  })();
-
-  const newLabel = (text: string, unique?: boolean) => {
-    const label = `.${unique ? labelCounter() + "_" : ""}${text}`;
-    return {
-      key: label,
-      startLabel: `${label}_start`,
-      endLabel: `${label}_end`,
-    };
-  };
+  const newLabel = labelsGenerator();
 
   const emitInstruction = (
     mnemonic: string,
@@ -124,7 +111,7 @@ export const createCompilerContext = (): CompilerContext => {
 
     assembly.push({ type: "label", text: label, comment });
 
-    if (label.includes("_end")) {
+    if (label.includes("_after")) {
       emitBlank();
     }
   };

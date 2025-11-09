@@ -5,32 +5,26 @@ import { assertCompilerContext, CompilerContext } from "../../../../types/compil
 import registers from "../../../memory/registers";
 
 const compileForInStatement = function (this: CompilerContext, node: ForInStatement): void {
-  assertCompilerContext(this);
-
-  registers.enterScope(); // Enter for-in loop scope
-
-  const { key, startLabel, endLabel } = this.newLabel("for_in", true);
-  const bodyLabel = `${key}_body`;
-  const updateLabel = `${key}_update`;
-
-  this.breakHandlerStack.push(endLabel);
-  this.continueHandlerStack.push(updateLabel); // continue jumps to update section
-
-  // Get the loop variable
-  if (node.left.type !== "VariableDeclaration") {
+  const { left: variable, right: iterable } = node;
+  if (variable.type !== "VariableDeclaration") {
     throw new Error("for-in loop variable must be a VariableDeclaration");
   }
 
-  const declarator = node.left.declarations[0];
+  const labels = this.newLabel("forIn");
+  this.breakHandlerStack.push(labels.after);
+  this.continueHandlerStack.push(labels.update);
+
+  const [declarator] = variable.declarations;
   assertIdentifier(declarator.id);
+
   const loopVarName = declarator.id.name;
 
   // For arrays, we iterate over indices (0, 1, 2, ...)
   // For now, we only support iterating over array indices
-  assertIdentifier(node.right);
-  const arrayInfo = registers.getArray(node.right.name);
+  assertIdentifier(iterable);
+  const arrayInfo = registers.getArray(iterable.name);
   if (!arrayInfo) {
-    throw new Error(`for-in requires an array, got ${node.right.name}`);
+    throw new Error(`for-in requires an array, got ${iterable.name}`);
   }
 
   // Initialize loop variable to 0
@@ -39,9 +33,9 @@ const compileForInStatement = function (this: CompilerContext, node: ForInStatem
 
   // Get array length
   const lengthReg = registers.next();
-  this.emitInstruction("LDI", [lengthReg, `${arrayInfo.size}`], null, `${node.right.name}.length`);
+  this.emitInstruction("LDI", [lengthReg, `${arrayInfo.size}`], null, `${iterable.name}.length`);
 
-  this.emitLabel(startLabel);
+  this.emitLabel(labels.start);
 
   // Check if index < length
   const compareReg = registers.next();
@@ -49,27 +43,33 @@ const compileForInStatement = function (this: CompilerContext, node: ForInStatem
     "SUB",
     [indexReg, lengthReg, compareReg],
     null,
-    `${loopVarName} < ${node.right.name}.length`,
+    `${loopVarName} < ${iterable.name}.length`,
   );
-  this.emitInstruction("BLT", [compareReg, "$zero", bodyLabel]);
-  this.emitInstruction("JUMP", [endLabel]);
+  this.emitInstruction("BLT", [compareReg, "$zero", labels.body]);
+  this.emitInstruction("JUMP", [labels.after]);
 
-  this.emitLabel(bodyLabel);
+  this.emitLabel(labels.body);
   this.compileNode(node.body);
 
-  this.emitLabel(updateLabel);
-  // Increment index
+  this.emitLabel(labels.update); // Increment index
   this.emitInstruction("ADDI", [indexReg, "1", indexReg], null, `${loopVarName}++`);
-  this.emitInstruction("JUMP", [startLabel]);
+  this.emitInstruction("JUMP", [labels.start]);
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
   this.breakHandlerStack.pop();
   this.continueHandlerStack.pop();
 
   registers.free(indexReg);
   registers.free(lengthReg);
   registers.free(compareReg);
-  registers.exitScope(); // Exit for-in loop scope
 };
 
-export default compileForInStatement;
+export default function (this: CompilerContext, node: ForInStatement): void {
+  assertCompilerContext(this);
+
+  registers.enterScope();
+
+  compileForInStatement.call(this, node);
+
+  registers.exitScope();
+}

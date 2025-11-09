@@ -1,7 +1,7 @@
 import { FunctionDeclaration } from "estree";
 
 import { assertIdentifier } from "../../../../types/assembly";
-import { assertCompilerContext, CompilerContext } from "../../../../types/compile";
+import { assertCompilerContext, CompilerContext, LabelType } from "../../../../types/compile";
 import { STACK_POINTER_REGISTER } from "../../../../types/ISA";
 import registers from "../../../memory/registers";
 import compileReturnStatement from "../returnStatement";
@@ -13,11 +13,11 @@ const compileFunctionDeclaration = function (
   assertCompilerContext(this);
 
   const fnName = node.id!.name;
-  const { startLabel, endLabel } = this.newLabel(fnName);
+  const labels = this.newLabel(fnName as LabelType, false);
 
-  this.emitInstruction("JUMP", [endLabel]); // don't execute function body on declaration
+  this.emitInstruction("JUMP", [labels.after]); // don't execute function body on declaration
 
-  this.emitLabel(startLabel);
+  this.emitLabel(labels.start);
 
   // Load parameters from stack into registers (r15 = STACK_POINTER)
   // First param at [r15+0], second at [r15-1], third at [r15-2], etc.
@@ -43,7 +43,7 @@ const compileFunctionDeclaration = function (
     compileReturnStatement.call(this);
   }
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
 };
 
 export default compileFunctionDeclaration;

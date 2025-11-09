@@ -5,24 +5,20 @@ import registers from "../../memory/registers";
 import compileValue from "../expression/compileValue";
 
 const compileSwitchStatement = function (this: CompilerContext, node: SwitchStatement): void {
-  assertCompilerContext(this);
+  const labels = this.newLabel("switch");
 
-  const { key, startLabel, endLabel } = this.newLabel("switch", true);
-
-  registers.enterScope(); // Enter switch scope
-
-  this.breakHandlerStack.push(endLabel); // break jumps to end
+  this.breakHandlerStack.push(labels.after);
 
   // Compile the discriminant (the value being switched on)
   const discriminantReg = compileValue.call(this, node.discriminant, "switch");
 
-  this.emitLabel(startLabel);
+  this.emitLabel(labels.start);
 
   // Generate labels for each case
-  const caseLabels = node.cases.map((_, index) => `${key}_case_${index}`);
+  const caseLabels = node.cases.map((_, index) => `${labels.case}_${index}`);
   const defaultLabel = node.cases.some((c) => c.test == null)
     ? caseLabels[node.cases.findIndex((c) => c.test == null)]
-    : endLabel;
+    : labels.after;
 
   // Compare discriminant with each case test
   for (let i = 0; i < node.cases.length; i++) {
@@ -33,14 +29,12 @@ const compileSwitchStatement = function (this: CompilerContext, node: SwitchStat
       const testReg = compileValue.call(this, caseNode.test);
 
       // Compare discriminant === test
-      const compareReg = registers.next();
-      this.emitInstruction("SUB", [discriminantReg, testReg, compareReg]);
+      this.emitInstruction("CMP", [discriminantReg, testReg]);
 
-      // If equal (result is zero), jump to this case
-      this.emitInstruction("BEQ", [compareReg, "$zero", caseLabels[i]]);
+      // If equal, jump to this case
+      this.emitInstruction("BEQ", [caseLabels[i]]);
 
       registers.free(testReg);
-      registers.free(compareReg);
     }
   }
 
@@ -64,11 +58,18 @@ const compileSwitchStatement = function (this: CompilerContext, node: SwitchStat
     }
   }
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
   this.breakHandlerStack.pop();
 
   registers.free(discriminantReg);
-  registers.exitScope(); // Exit switch scope
 };
 
-export default compileSwitchStatement;
+export default function (this: CompilerContext, node: SwitchStatement): void {
+  assertCompilerContext(this);
+
+  registers.enterScope();
+
+  compileSwitchStatement.call(this, node);
+
+  registers.exitScope();
+}

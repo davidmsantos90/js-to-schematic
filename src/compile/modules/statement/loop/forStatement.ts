@@ -5,11 +5,6 @@ import registers from "../../../memory/registers";
 import { compileBinaryExpression, compileUpdateExpression } from "../../expression";
 
 const compileForStatement = function (this: CompilerContext, node: ForStatement): void {
-  assertCompilerContext(this);
-
-  registers.enterScope(); // Enter for loop scope
-
-  // Compile initialization
   if (node.init) {
     if (node.init.type === "VariableDeclaration") {
       this.compileNode(node.init);
@@ -19,22 +14,22 @@ const compileForStatement = function (this: CompilerContext, node: ForStatement)
     }
   }
 
-  const { key, startLabel, endLabel } = this.newLabel("for", true);
-  const bodyLabel = `${key}_body`;
-  const updateLabel = `${key}_update`;
+  const labels = this.newLabel("for");
+  this.breakHandlerStack.push(labels.after);
+  this.continueHandlerStack.push(labels.update);
 
-  this.breakHandlerStack.push(endLabel);
-  this.continueHandlerStack.push(updateLabel); // continue jumps to update section
-
-  this.emitLabel(startLabel);
+  this.emitLabel(labels.start);
   if (node.test && node.test.type === "BinaryExpression") {
-    compileBinaryExpression.call(this, node.test, { trueLabel: bodyLabel, falseLabel: endLabel });
+    compileBinaryExpression.call(this, node.test, {
+      trueLabel: labels.body,
+      falseLabel: labels.after,
+    });
   }
 
-  this.emitLabel(bodyLabel);
+  this.emitLabel(labels.body);
   this.compileNode(node.body);
 
-  this.emitLabel(updateLabel);
+  this.emitLabel(labels.update);
   if (node.update) {
     if (node.update.type === "UpdateExpression") {
       compileUpdateExpression.call(this, node.update);
@@ -42,13 +37,19 @@ const compileForStatement = function (this: CompilerContext, node: ForStatement)
       this.compileNode({ type: "ExpressionStatement", expression: node.update });
     }
   }
-  this.emitInstruction("JUMP", [startLabel]);
+  this.emitInstruction("JUMP", [labels.start]);
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
   this.breakHandlerStack.pop();
   this.continueHandlerStack.pop();
-
-  registers.exitScope(); // Exit for loop scope
 };
 
-export default compileForStatement;
+export default function (this: CompilerContext, node: ForStatement): void {
+  assertCompilerContext(this);
+
+  registers.enterScope();
+
+  compileForStatement.call(this, node);
+
+  registers.exitScope();
+}

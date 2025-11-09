@@ -5,32 +5,25 @@ import { assertCompilerContext, CompilerContext } from "../../../../types/compil
 import registers from "../../../memory/registers";
 
 const compileForOfStatement = function (this: CompilerContext, node: ForOfStatement): void {
-  assertCompilerContext(this);
-
-  registers.enterScope(); // Enter for-of loop scope
-
-  const { key, startLabel, endLabel } = this.newLabel("for_of", true);
-  const bodyLabel = `${key}_body`;
-  const updateLabel = `${key}_update`;
-
-  this.breakHandlerStack.push(endLabel);
-  this.continueHandlerStack.push(updateLabel); // continue jumps to update section
-
-  // Get the loop variable
-  if (node.left.type !== "VariableDeclaration") {
+  const { left: variable, right: iterable } = node;
+  if (variable.type !== "VariableDeclaration") {
     throw new Error("for-of loop variable must be a VariableDeclaration");
   }
 
-  const [declarator] = node.left.declarations;
+  const labels = this.newLabel("forOf");
+  this.breakHandlerStack.push(labels.after);
+  this.continueHandlerStack.push(labels.update);
+
+  const [declarator] = variable.declarations;
   assertIdentifier(declarator.id);
 
   const loopVarName = declarator.id.name;
 
   // For arrays, we iterate over values (arr[0], arr[1], arr[2], ...)
-  assertIdentifier(node.right);
-  const arrayInfo = registers.getArray(node.right.name);
+  assertIdentifier(iterable);
+  const arrayInfo = registers.getArray(iterable.name);
   if (!arrayInfo) {
-    throw new Error(`for-of requires an array, got ${node.right.name}`);
+    throw new Error(`for-of requires an array, got ${iterable.name}`);
   }
 
   // Create an index register (not exposed to user)
@@ -39,12 +32,12 @@ const compileForOfStatement = function (this: CompilerContext, node: ForOfStatem
 
   // Get array length
   const lengthReg = registers.next();
-  this.emitInstruction("LDI", [lengthReg, `${arrayInfo.size}`], null, `${node.right.name}.length`);
+  this.emitInstruction("LDI", [lengthReg, `${arrayInfo.size}`], null, `${iterable.name}.length`);
 
   // Allocate register for loop variable (this will hold the array value)
   const valueReg = registers.set(loopVarName);
 
-  this.emitLabel(startLabel);
+  this.emitLabel(labels.start);
 
   // Check if index < length
   const compareReg = registers.next();
@@ -52,24 +45,24 @@ const compileForOfStatement = function (this: CompilerContext, node: ForOfStatem
     "SUB",
     [indexReg, lengthReg, compareReg],
     null,
-    `index < ${node.right.name}.length`,
+    `index < ${iterable.name}.length`,
   );
-  this.emitInstruction("BLT", [compareReg, "$zero", bodyLabel]);
-  this.emitInstruction("JUMP", [endLabel]);
+  this.emitInstruction("BLT", [compareReg, "$zero", labels.body]);
+  this.emitInstruction("JUMP", [labels.after]);
 
-  this.emitLabel(bodyLabel);
+  this.emitLabel(labels.body);
 
   // Load array[index] into loop variable
   const baseReg = registers.next();
-  this.emitInstruction("LDI", [baseReg, `${arrayInfo.base}`], null, `base of ${node.right.name}`);
+  this.emitInstruction("LDI", [baseReg, `${arrayInfo.base}`], null, `base of ${iterable.name}`);
 
   const offsetReg = registers.next();
-  this.emitInstruction("ADD", [baseReg, indexReg, offsetReg], null, `${node.right.name} + index`);
+  this.emitInstruction("ADD", [baseReg, indexReg, offsetReg], null, `${iterable.name} + index`);
   this.emitInstruction(
     "LOAD",
     [offsetReg, valueReg, "0"],
     node.right,
-    `${loopVarName} = ${node.right.name}[index]`,
+    `${loopVarName} = ${iterable.name}[index]`,
   );
 
   registers.free(baseReg);
@@ -78,21 +71,27 @@ const compileForOfStatement = function (this: CompilerContext, node: ForOfStatem
   // Execute loop body
   this.compileNode(node.body);
 
-  this.emitLabel(updateLabel);
+  this.emitLabel(labels.update);
 
   // Increment index
   this.emitInstruction("ADDI", [indexReg, "1", indexReg], null, `index++`);
-  this.emitInstruction("JUMP", [startLabel]);
+  this.emitInstruction("JUMP", [labels.start]);
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
   this.breakHandlerStack.pop();
   this.continueHandlerStack.pop();
 
   registers.free(indexReg);
   registers.free(lengthReg);
   registers.free(compareReg);
-
-  registers.exitScope(); // Exit for-of loop scope
 };
 
-export default compileForOfStatement;
+export default function (this: CompilerContext, node: ForOfStatement): void {
+  assertCompilerContext(this);
+
+  registers.enterScope();
+
+  compileForOfStatement.call(this, node);
+
+  registers.exitScope();
+}

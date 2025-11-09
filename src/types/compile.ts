@@ -1,6 +1,5 @@
 import {
   BinaryExpression,
-  Declaration,
   Directive,
   Expression,
   ModuleDeclaration,
@@ -12,6 +11,8 @@ import Stack from "../compile/Stack";
 import { RegisterName } from "./ISA";
 
 export type EstreeNode = Node;
+
+export type LabelType = "while" | "doWhile" | "for" | "forIn" | "forOf" | "if" | "switch" | "try";
 
 export type CompileCallExpressionWithReturnFn = (
   callExpr: any,
@@ -49,15 +50,14 @@ export type CompileStatement = (statement: Statement) => void;
 export interface CompilerContext {
   breakHandlerStack: Stack<string>;
   continueHandlerStack: Stack<string>;
-  errorHandlerStack: Stack<string>; // Stack of catch block labels for exception handling
+  errorHandlerStack: Stack<string>;
+
   emitInstruction: EmitInstruction;
   emitLabel: (label: string) => void;
   emitBlank: () => void;
   emitDefine: (name: string, value: string | number) => void;
-  newLabel: (
-    text: string,
-    unique?: boolean,
-  ) => { key: string; startLabel: string; endLabel: string };
+
+  newLabel: (type: LabelType, unique?: boolean) => Record<string, LabelType | string>;
   getAssembly: () => string[];
   astToSource: (node: EstreeNode) => string;
 

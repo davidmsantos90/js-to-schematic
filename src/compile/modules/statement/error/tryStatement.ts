@@ -1,53 +1,18 @@
 import type { TryStatement } from "estree";
 
 import { assertIdentifier } from "../../../../types/assembly";
-import { assertCompilerContext, CompilerContext } from "../../../../types/compile";
+import { assertCompilerContext, CompilerContext, LabelType } from "../../../../types/compile";
 import { STACK_POINTER_REGISTER } from "../../../../types/ISA";
 import registers from "../../../memory/registers";
 
-/**
- * Compiles a try-catch-finally statement
- * Structure:
- * - try block: normal execution
- * - catch block: executed if exception is thrown
- * - finally block: always executed (optional)
- *
- * Exception values are passed via the stack at [SP + 1] (same location as return values)
- */
-const compileTryStatement = function (this: CompilerContext, node: TryStatement): void {
-  assertCompilerContext(this);
+const compileCatchBlock = function (
+  this: CompilerContext,
+  node: TryStatement,
+  labels: Record<string, LabelType | string>,
+): void {
+  if (!node.handler) return;
 
-  const { key, startLabel, endLabel } = this.newLabel("try", true);
-  const catchLabel = `${key}_catch`;
-  const finallyLabel = node.finalizer ? `${key}_finally` : null;
-  const afterLabel = `${key}_after`;
-
-  registers.enterScope(); // Enter try scope
-
-  // Push catch handler onto error handler stack
-  if (node.handler) {
-    this.errorHandlerStack.push(catchLabel);
-  }
-
-  // Compile try block
-  this.emitLabel(startLabel);
-  this.compileNode(node.block);
-
-  // Pop error handler - we're past the try block
-  if (node.handler) {
-    this.errorHandlerStack.pop();
-  }
-
-  // If no error occurred, skip catch and go to finally (or after)
-  if (finallyLabel) {
-    this.emitInstruction("JUMP", [finallyLabel], null, "No exception, skip to finally");
-  } else {
-    this.emitInstruction("JUMP", [afterLabel], null, "No exception, skip catch");
-  }
-
-  // Compile catch block
-  if (node.handler) {
-    this.emitLabel(catchLabel);
+  this.emitLabel(labels.catch);
 
     registers.enterScope(); // Enter catch scope
 
@@ -72,29 +37,78 @@ const compileTryStatement = function (this: CompilerContext, node: TryStatement)
     registers.exitScope(); // Exit catch scope
 
     // After catch, jump to finally (or after)
-    if (finallyLabel) {
-      this.emitInstruction("JUMP", [finallyLabel], null, "Jump to finally");
+    if (node.finalizer != null) {
+      this.emitInstruction("JUMP", [labels.finally], null, "Jump to finally");
     } else {
-      this.emitInstruction("JUMP", [afterLabel], null, "Exit try-catch");
+      this.emitInstruction("JUMP", [labels.after], null, "Exit try-catch");
     }
-  }
+}
 
-  // Compile finally block
-  if (node.finalizer && finallyLabel) {
-    this.emitLabel(finallyLabel);
+const compileFinallyBlock = function (
+  this: CompilerContext,
+  node: TryStatement,
+  labels: Record<string, LabelType | string>,
+): void {
+  if (!node.finalizer) return;
 
-    registers.enterScope(); // Enter finally scope
+  this.emitLabel(labels.finally);
 
-    // Compile finally block body
-    this.compileNode(node.finalizer);
+  registers.enterScope(); // Enter finally scope
 
-    registers.exitScope(); // Exit finally scope
-  }
+  // Compile finally block body
+  this.compileNode(node.finalizer);
 
-  this.emitLabel(afterLabel);
-  this.emitLabel(endLabel);
-
-  registers.exitScope(); // Exit try scope
+  registers.exitScope(); // Exit finally scope
 };
 
-export default compileTryStatement;
+/**
+ * Compiles a try-catch-finally statement
+ * Structure:
+ * - try block: normal execution
+ * - catch block: executed if exception is thrown
+ * - finally block: always executed (optional)
+ *
+ * Exception values are passed via the stack at [SP + 1] (same location as return values)
+ */
+const compileTryStatement = function (this: CompilerContext, node: TryStatement): void {
+  const labels = this.newLabel("try");
+
+  // Push catch handler onto error handler stack
+  if (node.handler) {
+    this.errorHandlerStack.push(labels.catch);
+  }
+
+  // Compile try block
+  this.emitLabel(labels.start);
+  this.compileNode(node.block);
+
+  // Pop error handler - we're past the try block
+  if (node.handler) {
+    this.errorHandlerStack.pop();
+  }
+
+  // If no error occurred, skip catch and go to finally (or after)
+  if (node.finalizer != null) {
+    this.emitInstruction("JUMP", [labels.finally], null, "No exception, skip to finally");
+  } else {
+    this.emitInstruction("JUMP", [labels.after], null, "No exception, skip catch");
+  }
+
+  // Compile catch block
+  compileCatchBlock.call(this, node, labels);
+
+  // Compile finally block
+  compileFinallyBlock.call(this, node, labels);
+
+  this.emitLabel(labels.after);
+};
+
+export default function (this: CompilerContext, node: TryStatement): void {
+  assertCompilerContext(this);
+  
+  registers.enterScope();
+
+  compileTryStatement.call(this, node);
+
+  registers.exitScope();
+}

@@ -6,6 +6,7 @@ This document provides a comprehensive guide to all JavaScript features supporte
 
 - [Variables and Constants](#variables-and-constants)
 - [Arrays](#arrays)
+- [Strings](#strings)
 - [Control Flow](#control-flow)
 - [Functions](#functions)
 - [Exception Handling](#exception-handling)
@@ -102,6 +103,55 @@ for (let i = 0; i < arr.length; i++) {
    - After: `LOAD result, base, index`
 
 2. **Memory Layout**: Contiguous allocation in data segment
+
+---
+
+## Strings
+
+Strings are implemented as **character arrays** where each character is stored as its ASCII/Unicode value.
+
+### String Declaration
+
+```javascript
+let str = "hello";  // Stored as [104, 101, 108, 108, 111]
+```
+
+### String Access
+
+```javascript
+let firstChar = str[0];  // Access character by index (returns ASCII code)
+let lastChar = str[4];   // str[4] = 111 ('o')
+```
+
+### String Length
+
+```javascript
+let str = "hello";
+let len = str.length;  // len = 5 (compile-time known)
+```
+
+### String Iteration
+
+```javascript
+// For-in loop (iterate over indices)
+for (let i in str) {
+  let charCode = str[i];  // Get character code at index
+}
+
+// For-of loop (iterate over values)
+for (let charCode of str) {
+  // charCode is the ASCII value
+}
+```
+
+### Implementation Details
+
+- **Strings are immutable character arrays**: Same memory layout as arrays
+- **Character codes**: Each character stored as its integer ASCII/Unicode value
+- **Fixed size**: String length determined at compile time
+- **All array operations work**: Length, indexing, iteration
+
+**Note**: String literals are compiled to array allocations with character codes.
 
 ---
 
@@ -418,16 +468,17 @@ Follows standard JavaScript operator precedence.
 ## Limitations
 
 1. **No floating-point numbers** - Only integers supported
-2. **No strings** - No string literals or string operations (except internal use)
-3. **No objects** - Only arrays and primitives
-4. **No dynamic arrays** - Fixed size at declaration, determined at compile time
-5. **No hoisting** - Variables must be declared before use
-6. **No closures** - Functions cannot capture outer scope
-7. **Limited exception propagation** - Exceptions don't cross function boundaries
-8. **No type coercion** - Strict type handling
-9. **No console.log** - No I/O operations or printing
-10. **No array.length at runtime** - Length is compile-time constant from declaration
-11. **No ternary operator** - Use if-else statements
+2. **No objects** - Only arrays, strings (as character arrays), and primitives
+3. **No dynamic arrays** - Fixed size at declaration, determined at compile time
+4. **No hoisting** - Variables must be declared before use
+5. **No closures** - Functions cannot capture outer scope
+6. **Limited exception propagation** - Exceptions don't cross function boundaries
+7. **No type coercion** - Strict type handling
+8. **No console.log** - No I/O operations or printing
+9. **No runtime array/string length** - Length is compile-time constant from declaration
+10. **No ternary operator** - Use if-else statements
+11. **No string methods** - Only indexing and length (strings are character arrays)
+12. **Strings are immutable** - Cannot modify individual characters after creation
 
 ---
 

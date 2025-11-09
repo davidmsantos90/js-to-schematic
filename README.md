@@ -146,6 +146,7 @@ Low addresses (0)
 
 - **Numbers**: Integer values
 - **Arrays**: Fixed-size integer arrays
+- **Strings**: Character arrays (each character stored as ASCII/Unicode value)
 - **Booleans**: Represented as 0 (false) and non-zero (true)
 
 ## Examples
@@ -290,9 +291,9 @@ Machine Code
 - Limited to integer values
 - No dynamic memory allocation
 - No garbage collection
-- Fixed array sizes
-- No object support (beyond arrays)
-- No string operations
+- Fixed array and string sizes
+- No object support (beyond arrays and strings)
+- Strings are character arrays (no string methods like concat, substring, etc.)
 - No multi-level exception propagation across functions
 
 ## License

@@ -1,6 +1,6 @@
 import type { Expression } from "estree";
 
-import { assertCompilerContext, CompilerContext, ExpressionCompiler } from "../../../types/compile";
+import { CompilerContext, ExpressionCompiler } from "../../../types/compile";
 import compileAssignmentExpression from "./assignmentExpression";
 import compileBinaryExpression from "./binaryExpression";
 import { compileCallExpression } from "./callExpression";

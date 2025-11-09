@@ -63,19 +63,38 @@ export const replaceLabels = (program: string[]): TranslatedInstruction[] => {
       return address != null ? address : operand;
     });
 
-    // Create enhanced assembly comment with resolved label addresses and constants
-    let enhancedAssembly = originalLines[index];
+    // Extract original comment from compile phase (if exists)
+    const originalLine = originalLines[index];
+    const originalCommentMatch = originalLine.match(/;\s*(.+)$/);
+    const originalComment = originalCommentMatch ? originalCommentMatch[1] : null;
 
-    // Replace labels with "label (address)" format in the comment
+    // Create enhanced assembly with resolved addresses
+    let enhancedAssembly = `${mnemonic} ${operands.join(" ")}`;
+    const labelComments: string[] = [];
+    const constantComments: string[] = [];
+
+    // Collect label and constant references for comment
     opsRaw.forEach((operand) => {
       if (labels[operand] != null) {
-        const labelAddress = labels[operand];
-        enhancedAssembly = enhancedAssembly.replace(operand, `${operand} (${labelAddress})`);
+        labelComments.push(operand);
       } else if (constants[operand] != null) {
-        const constantValue = constants[operand];
-        enhancedAssembly = enhancedAssembly.replace(operand, `${operand} (${constantValue})`);
+        constantComments.push(`${operand}=${constants[operand]}`);
       }
     });
+
+    // Build comment section: labels/constants first, then original comment
+    const commentParts: string[] = [];
+    if (labelComments.length > 0 || constantComments.length > 0) {
+      commentParts.push([...labelComments, ...constantComments].join(", "));
+    }
+
+    if (originalComment) {
+      commentParts.push(originalComment);
+    }
+
+    if (commentParts.length > 0) {
+      enhancedAssembly += ` ; ${commentParts.join(" | ")}`;
+    }
 
     return {
       mnemonic,

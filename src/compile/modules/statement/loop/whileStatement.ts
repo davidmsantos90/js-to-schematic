@@ -5,30 +5,34 @@ import registers from "../../../memory/registers";
 import { compileBinaryExpression } from "../../expression";
 
 const compileWhileStatement = function (this: CompilerContext, node: WhileStatement): void {
-  assertCompilerContext(this);
+  const labels = this.newLabel("while");
 
-  const { key, startLabel, endLabel } = this.newLabel("while", true);
-  const bodyLabel = `${key}_body`;
+  this.emitLabel(labels.start);
+  this.breakHandlerStack.push(labels.after);
+  this.continueHandlerStack.push(labels.start);
 
-  registers.enterScope(); // Enter loop scope
-
-  this.breakHandlerStack.push(endLabel);
-  this.continueHandlerStack.push(startLabel);
-
-  this.emitLabel(startLabel);
   if (node.test.type === "BinaryExpression") {
-    compileBinaryExpression.call(this, node.test, { trueLabel: bodyLabel, falseLabel: endLabel });
+    compileBinaryExpression.call(this, node.test, {
+      trueLabel: labels.body,
+      falseLabel: labels.after,
+    });
   }
 
-  this.emitLabel(bodyLabel);
+  this.emitLabel(labels.body);
   this.compileNode(node.body);
-  this.emitInstruction("JUMP", [startLabel]);
+  this.emitInstruction("JUMP", [labels.start]);
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
   this.breakHandlerStack.pop();
   this.continueHandlerStack.pop();
-
-  registers.exitScope(); // Exit loop scope
 };
 
-export default compileWhileStatement;
+export default function (this: CompilerContext, node: WhileStatement): void {
+  assertCompilerContext(this);
+
+  registers.enterScope();
+
+  compileWhileStatement.call(this, node);
+
+  registers.exitScope();
+}

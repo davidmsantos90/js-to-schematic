@@ -6,24 +6,23 @@ import compileBinaryExpression from "../expression/binaryExpression";
 const compileIfStatement = function (this: CompilerContext, node: IfStatement): void {
   assertCompilerContext(this);
 
-  const { key, startLabel, endLabel } = this.newLabel("if", true);
-  const elseLabel = `${key}_else`;
+  const labels = this.newLabel("if");
 
   if (node.test.type === "BinaryExpression") {
-    const falseLabel = node.alternate ? elseLabel : endLabel;
-    compileBinaryExpression.call(this, node.test, { trueLabel: startLabel, falseLabel });
+    const falseLabel = node.alternate ? labels.else : labels.after;
+    compileBinaryExpression.call(this, node.test, { trueLabel: labels.start, falseLabel });
   }
 
-  this.emitLabel(startLabel);
+  this.emitLabel(labels.start);
   this.compileNode(node.consequent);
 
   if (node.alternate) {
-    this.emitInstruction("JUMP", [endLabel]);
-    this.emitLabel(elseLabel);
+    this.emitInstruction("JUMP", [labels.after]);
+    this.emitLabel(labels.else);
     this.compileNode(node.alternate);
   }
 
-  this.emitLabel(endLabel);
+  this.emitLabel(labels.after);
 };
 
 export default compileIfStatement;

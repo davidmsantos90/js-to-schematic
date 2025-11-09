@@ -1,4 +1,4 @@
-import type { Program, Statement } from "estree";
+import type { Program } from "estree";
 
 import { createCompilerContext } from "./CompilerContext";
 

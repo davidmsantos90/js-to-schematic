@@ -1,7 +1,7 @@
 import { CallExpression, Expression } from "estree";
 
 import { assertIdentifier } from "../../../types/assembly";
-import { assertCompilerContext, CompilerContext } from "../../../types/compile";
+import { assertCompilerContext, CompilerContext, LabelType } from "../../../types/compile";
 import { STACK_POINTER_REGISTER } from "../../../types/ISA";
 import registers from "../../memory/registers";
 import compileValue from "./compileValue";
@@ -37,8 +37,8 @@ export const compileCallExpression = function (
     }
   }
 
-  const { startLabel } = this.newLabel(callee.name);
-  this.emitInstruction("CALL", [startLabel], expression);
+  const labels = this.newLabel(callee.name as LabelType, false);
+  this.emitInstruction("CALL", [labels.start], expression);
 };
 
 export default compileCallExpression;

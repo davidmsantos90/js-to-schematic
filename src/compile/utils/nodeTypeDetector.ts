@@ -8,87 +8,84 @@ import type {
 } from "estree";
 
 /**
- * Type guard to check if a node is a Statement
- * Statements include: ExpressionStatement, IfStatement, WhileStatement, ForStatement,
- * BlockStatement, ReturnStatement, BreakStatement, ContinueStatement, etc.
- */
-export function isStatement(node: Node): node is Statement {
-  const statementTypes = [
-    "ExpressionStatement", // ? special case for directives
-    "DebuggerStatement", // nope
-    "WithStatement", // nope
-    "LabeledStatement", // nope
-    "ThrowStatement", // done
-    "TryStatement", // done
-    "BlockStatement", // done
-    "EmptyStatement", // done
-    "ReturnStatement", // done
-
-    "BreakStatement", // done
-    "ContinueStatement", // done
-    "IfStatement", // done
-    "SwitchStatement", // done
-
-    "WhileStatement", // done
-    "DoWhileStatement", // done
-    "ForStatement", // done
-    "ForInStatement", // done
-    "ForOfStatement", // done
-
-    "FunctionDeclaration", // done
-    "VariableDeclaration", // done
-    "ClassDeclaration", // x
-  ];
-
-  return statementTypes.includes(node.type);
-}
-
-/**
  * Type guard to check if a node is an Expression
  * Expressions include: Identifier, Literal, BinaryExpression, CallExpression,
  * ArrayExpression, ObjectExpression, AssignmentExpression, etc.
  */
 export function isExpression(node: Node): node is Expression {
   const expressionTypes = [
-    "ThisExpression",
-    "ArrayExpression",
-    "ObjectExpression",
-    "FunctionExpression",
-    "ArrowFunctionExpression",
-    "YieldExpression",
-    "Literal",
-    "UnaryExpression",
-    "UpdateExpression",
-    "BinaryExpression",
-    "AssignmentExpression",
-    "LogicalExpression",
-    "MemberExpression",
-    "ConditionalExpression",
-    "CallExpression",
-    "NewExpression",
-    "SequenceExpression",
-    "TemplateLiteral",
-    "TaggedTemplateExpression",
-    "ClassExpression",
-    "MetaProperty",
+    /* a variable or function name */
     "Identifier",
+
+    /* create array */
+    "ArrayExpression",
+    /* create object */
+    "ObjectExpression",
+
+    /* create anonymous (or not) function */
+    "FunctionExpression",
+    /* create anonymous (or not) arrow function */
+    "ArrowFunctionExpression",
+
+    /* numbers, strings, boolean, null ... regexp, bigints (not supported) */
+    "Literal",
+    /* template strings */
+    "TemplateLiteral",
+    
+    /* Negate (-), Plus (+), Logical Not (!), Bitwise Not (~), ? typeof, void, delete ? */
+    "UnaryExpression",
+    
+    /** increment (++) and decrement (--) */
+    "UpdateExpression",
+
+    /**
+     * Arithmetic: +, -, *, /, %, **
+     * Comparison: ==, ===, !=, !==, <, >, <=, >=
+     * Bitwise: AND (&), OR (|), XOR (^), SHL (<<), SHR (>>), USHR (>>>)
+     * Special: in, instanceof
+     */
+    "BinaryExpression",
+    /**
+     * Assignment: =, +=, -=, *=, /=, %=, **=, &=, |=, ^=, <<=, >>=, >>>=
+     * Logical Assignment: &&=, ||=, ??=
+     */
+    "AssignmentExpression",
+    /* &&, ||, ?? */
+    "LogicalExpression",
+
+    /* Conditional (ternary) operator */
+    "ConditionalExpression",
+
+    /* function call */
+    "CallExpression",
+
+    /* member access obj.prop, obj['prop'], obj[index] */
+    "MemberExpression",
+
+    // maybe
+
+    /* this.foo */
+    "ThisExpression",
+
+    /* a, b, c ... used in loops, so maybe */
+    "SequenceExpression",
+
+    /* function`hello world` */
+    "TaggedTemplateExpression",
+
+    /* optional chaining obj?.prop?.subprop */
+    "ChainExpression",
+
+    // nope
+    "MetaProperty",
+    "NewExpression",
+    "ClassExpression",
+    "YieldExpression",
     "AwaitExpression",
     "ImportExpression",
-    "ChainExpression",
   ];
 
   return expressionTypes.includes(node.type);
-}
-
-/**
- * Type guard to check if a node is a Declaration
- * Declarations include: FunctionDeclaration, VariableDeclaration, ClassDeclaration
- * Note: Declarations are also statements, so a declaration will match both isDeclaration and isStatement
- */
-export function isDeclaration(node: Node): node is Declaration {
-  const declarationTypes = ["FunctionDeclaration", "VariableDeclaration", "ClassDeclaration"];
-
-  return declarationTypes.includes(node.type);
 }
 
 /**
@@ -99,7 +96,7 @@ export function isDeclaration(node: Node): node is Declaration {
  */
 export function isDirective(node: Node): node is Directive {
   return node.type === "ExpressionStatement" && "directive" in node;
-}
+};
 
 /**
  * Type guard to check if a node is a ModuleDeclaration
@@ -128,17 +125,14 @@ export function getNodeCategory(
   if (isDirective(node)) {
     return "directive";
   }
+
   if (isModuleDeclaration(node)) {
     return "module-declaration";
   }
-  if (isDeclaration(node)) {
-    return "declaration";
-  }
-  if (isStatement(node)) {
-    return "statement";
-  }
+
   if (isExpression(node)) {
     return "expression";
   }
+
   return "unknown";
 }

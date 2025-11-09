@@ -41,13 +41,13 @@ The compiler uses a **single-pass** compilation strategy, generating assembly co
 └────────┬─────────┘
          │
          ↓
-┌──────────────────┐
-│ Compiler Context │
-├──────────────────┤
-│ - State tracking │
+┌───────────────────┐
+│ Compiler Context  │
+├───────────────────┤
+│ - State tracking  │
 │ - Label generation│
 │ - Stack management│
-└────────┬─────────┘
+└────────┬──────────┘
          │
          ↓
 ┌──────────────────┐
@@ -136,11 +136,33 @@ Three stacks track control flow context:
 The compiler manages 15 general-purpose registers (r0-r14):
 
 ```typescript
-const reg = registers.set("variableName"); // Allocate
-registers.free(reg); // Free
-registers.enterScope(); // New scope
-registers.exitScope(); // Free all in scope
+// Named variables - tracked with scope
+const reg = registers.set("variableName"); // Allocate and track
+// This register will be freed automatically by exitScope()
+
+// Temporary registers - NOT tracked with scope
+const tempReg = registers.next(); // Allocate anonymous register
+registers.free(tempReg); // MUST manually free
+
+// Freeing registers
+registers.enterScope(); // Enter new scope
+registers.exitScope(); // Frees all NAMED variables in scope
 ```
+
+**Important Distinction:**
+
+1. **Named Variables** (`registers.set(name)`):
+   - Stored in the `variables` Map with their scope
+   - Automatically freed when `exitScope()` is called
+   - Used for user-declared variables (let/const)
+
+2. **Temporary Registers** (`registers.next()` or from expression compilers):
+   - NOT stored in the `variables` Map
+   - NOT associated with any scope
+   - MUST be manually freed with `registers.free()`
+   - Used for intermediate computation results
+
+This is why you'll see manual `registers.free()` calls in statement compilers - they're freeing temporary registers from expression evaluation, not named variables.
 
 ### Memory Allocator
 
@@ -303,13 +325,28 @@ LOAD $t1, $base, $offset  ; Direct load with offset
 
 ### 2. Register Reuse
 
-Registers are freed immediately when no longer needed:
+**Temporary registers** must be freed immediately after use to make them available for reuse:
 
 ```typescript
-const temp = registers.allocate();
+const temp = registers.next(); // Allocate temporary
 // ... use temp ...
-registers.free(temp); // Available for reuse
+registers.free(temp); // Free immediately - NOT freed by exitScope()
 ```
+
+**Named variable registers** are automatically freed when their scope ends:
+
+```typescript
+registers.enterScope();
+const x = registers.set("x"); // Named variable
+const y = registers.set("y"); // Named variable
+// ... use x and y ...
+registers.exitScope(); // Both x and y freed automatically
+```
+
+**Why the distinction?**
+- Temporary registers from expressions (`a + b`) need immediate freeing to prevent register exhaustion
+- Named variables need to stay allocated for their entire scope lifetime
+- This two-tier approach maximizes register availability
 
 ### 3. Scope-Based Cleanup
 
